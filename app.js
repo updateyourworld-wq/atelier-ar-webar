@@ -255,7 +255,10 @@ async function start() {
     video.srcObject = s.stream;
     await waitFor(s, video.play(), 12000, 'La caméra a été autorisée, mais Safari ne lit pas le flux vidéo.');
     if (signal.aborted) return;
-    if (!video.videoWidth) throw new Error('La caméra ne fournit aucune image.');
+    if (!video.videoWidth || !video.videoHeight) throw new Error('La caméra ne fournit aucune image.');
+    // MindAR 1.2.5 reads the element dimensions when copying frames.
+    video.width = video.videoWidth;
+    video.height = video.videoHeight;
     system.atelierTargetBuffer = s.targetBuffer;
     system.video = video;
     system.container = stage;

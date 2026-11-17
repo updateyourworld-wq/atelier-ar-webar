@@ -12,7 +12,7 @@ Prototype WebAR de suivi d’image. MindAR détecte la carte et calcule sa pose 
 
 Si Safari refuse la caméra, ouvrir le menu de la page → **Réglages du site web** → **Caméra**, autoriser l’accès, puis réessayer. Vérifier aussi que Safari a accès à la caméra dans les réglages iOS si l’option est disponible.
 
-**État : la reconnaissance et les permissions sur un iPhone physique restent à valider.** Le test sur Mac avec un flux simulé ne remplace pas le test iOS.
+**État : la reconnaissance et les permissions sur un iPhone physique restent à valider.** Sur Chrome/macOS, un flux vidéo simulé avec la carte officielle a permis de vérifier la détection, la perte de la cible, le plan animé et la libération du flux. Le refus de permission et l’annulation pendant la demande ont aussi été testés. Cela ne remplace pas le test iOS.
 
 ## Tester en local sur le Mac
 
