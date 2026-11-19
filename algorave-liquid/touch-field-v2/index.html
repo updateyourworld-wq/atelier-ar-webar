@@ -33,7 +33,7 @@ function testSound(){
  for(const freq of oscs){const o=ctx.createOscillator(),gain=ctx.createGain();o.type='sine';o.frequency.value=freq;gain.gain.setValueAtTime(.0001,t);gain.gain.linearRampToValueAtTime(.072,t+.05);gain.gain.setTargetAtTime(.0001,t+.55,.13);o.connect(gain);gain.connect(bus);o.start(t);o.stop(t+1.3)}
  $('status').textContent='TEST SOUND · 440 / 554 / 659 Hz';
 }
-$('testaudio').addEventListener('click',testSound);
+// AUDIO button above also plays the test chord; no obsolete TEST SOUND control.
 function noteFromX(nx,m){const scale=modes[m].scale;let ix=Math.min(scale.length-1,Math.floor(nx*scale.length));return modes[m].root*Math.pow(2,scale[ix]/12)}
 function createAudio(o){if(!initAudio())return;if(ctx.state==='suspended')ctx.resume();const a=ctx.createOscillator(),b=ctx.createOscillator(),f=ctx.createBiquadFilter(),gain=ctx.createGain();const profile=modes[o.mode];a.type=profile.wave;b.type=profile.timbre;f.type='lowpass';f.Q.value=.8;gain.gain.value=.0001;a.connect(f);b.connect(f);f.connect(gain);gain.connect(bus);a.start();b.start();o.audio={a,b,f,gain};o.bornAudio=ctx.currentTime;updateAudio(o,performance.now(),true)}
 function updateAudio(o,now,first=false){if(!ctx||!o.audio)return;const p=sample(o,now),pr=modes[o.mode],nx=p.x,ny=p.y,cycle=(now-o.born)/1000/(pr.loop||8),swell=.73+.27*Math.sin(cycle*Math.PI*2),level=(.038+.11*o.life)*swell*(o.active?1:.82),fq=noteFromX(nx,o.mode),a=o.audio;
