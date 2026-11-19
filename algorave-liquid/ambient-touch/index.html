@@ -6,7 +6,7 @@
 *{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;background:#050910;color:var(--ink);font:11px ui-monospace,SFMono-Regular,Menlo,monospace}button,input,select{font:inherit}button{touch-action:manipulation;cursor:pointer}main{height:100dvh;display:flex;flex-direction:column;overflow:hidden}header{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:calc(10px + env(safe-area-inset-top)) 12px 9px;border-bottom:1px solid #19303e}header b{font-size:14px;letter-spacing:.075em}header small{display:block;color:var(--dim);margin-top:4px}.pill{border:1px solid var(--line);border-radius:5px;padding:9px 10px;background:#0b1822;color:var(--ink);min-height:39px}.pill.active{border-color:var(--lime);color:var(--lime)}#canvasbox{position:relative;flex:1;min-height:190px;touch-action:none;overflow:hidden;background:#030913}canvas{width:100%;height:100%;display:block;touch-action:none}#canvasbox .hints{position:absolute;top:10px;left:11px;right:11px;pointer-events:none;display:flex;justify-content:space-between;gap:8px;color:#b1d3da;font-size:10px;text-shadow:0 1px 7px black}#canvasbox .bottomhint{position:absolute;bottom:12px;left:12px;pointer-events:none;color:#acd2d7;text-shadow:0 1px 5px #001;max-width:75%;line-height:1.55}#fullclose{display:none;position:absolute;top:11px;right:10px;z-index:10}.fullscreen main{height:100dvh}.fullscreen header,.fullscreen #panel{display:none}.fullscreen #canvasbox{position:fixed;inset:0;width:100vw;height:100dvh;z-index:200}.fullscreen #fullclose{display:block}.fullscreen #canvasbox .hints{top:calc(62px + env(safe-area-inset-top))}.fullscreen #canvasbox .bottomhint{bottom:calc(17px + env(safe-area-inset-bottom))}
 #panel{background:#09131c;border-top:1px solid #243846;padding:9px 11px calc(10px + env(safe-area-inset-bottom));max-height:49dvh;overflow:auto}.section{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px}.section b{font-size:11px;letter-spacing:.09em}.section small{color:var(--dim)}#engines{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px}#engines button{min-height:39px;padding:5px 2px;border-radius:4px;border:1px solid #314756;background:#101d27;color:#b8d1d7;font-size:9px;overflow-wrap:anywhere}#engines button.selected{color:#dfffbb;background:#253e30;border-color:#b8ed80}#detail{font-size:10px;color:#93aeba;min-height:17px;margin:8px 0}.patches{display:flex;gap:6px;overflow-x:auto;padding:2px 0 9px}.patches button{flex:1;min-width:max-content;padding:9px 8px;border:1px solid var(--line);border-radius:4px;background:#0f202b;color:#a9c0cb}.patches button.selected{background:#304334;border-color:#b9f390;color:#defbc2}.params{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}.params label{color:#b8d0d4;font-size:9px;min-width:0}.params label span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-height:15px}.params input{width:100%;accent-color:#baff8b;margin:8px 0 0;min-width:0}.bottomrow{display:flex;gap:7px;align-items:center;justify-content:space-between;margin-top:9px;flex-wrap:wrap}.bottomrow label{display:flex;align-items:center;gap:5px;color:#b0c8ce}.bottomrow input{width:74px;accent-color:#baff8b}#status{color:#baff8b}#notice{font-size:9px;line-height:1.5;color:#839aa5;margin-top:7px}
 
-#drumsection{margin-top:14px;padding-top:11px;border-top:1px solid #304652}
+#drumsection{margin-top:14px;padding-top:11px;border-top:1px solid #304652}.drumstyles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;margin:8px 0 11px}.drumstyles button{min-width:0;padding:9px 3px;min-height:37px;border:1px solid #345362;border-radius:5px;background:#102330;color:#bdd0d5;font-size:9px;overflow-wrap:anywhere}.drumstyles button.selected{background:#314a35;border-color:#bef990;color:#ddffce}
 #drumsection button{touch-action:manipulation}
 .drumrow{display:flex;align-items:center;justify-content:space-between;gap:6px;flex-wrap:wrap;margin:8px 0}
 .drumrow button{border:1px solid #3b5968;background:#142633;color:#c6dbe0;border-radius:5px;min-height:36px;padding:7px 10px}
@@ -27,13 +27,14 @@
 </style></head><body><main>
 <header><div><b>BEATHERAPY / ASCII TOUCH</b><small>16 AMBIENT MODULES · ORIGINAL WEB SYNTH</small></div><div><button id="full" class="pill">⛶ ASCII</button> <button id="panic" class="pill">■ STOP</button></div></header>
 <section id="canvasbox"><canvas id="ascii"></canvas><button id="fullclose" class="pill">✕ MODULES</button><div class="hints"><span id="activeName">NEBULA · CLOUD</span><span id="status">TOUCH TO PLAY</span></div><div class="bottomhint">TOUCH / HOLD = NOTE · X = PITCH + TONE · Y = CUTOFF · SPEED = EXPRESSION<br>Plusieurs doigts = plusieurs voix</div></section>
-<section id="panel"><div class="section"><b>01 / CHOOSE AN AMBIENT ENGINE</b><small>SELECT · THEN PLAY ON ASCII</small></div><div id="engines"></div><div id="detail"></div><div class="section"><b>02 / PATCH</b><small>4 VARIATIONS</small></div><div id="patches" class="patches"></div><div class="section"><b>03 / ENGINE CONTROLS</b><small>LIVE PARAMETERS</small></div><div id="params" class="params"></div><div id="drumsection"><div class="section"><b>04 / DRUM MACHINE · 808 / 909</b><small>4 × 16 STEPS / 64 TOTAL</small></div>
+<section id="panel"><div class="section"><b>01 / CHOOSE AN AMBIENT ENGINE</b><small>SELECT · THEN PLAY ON ASCII</small></div><div id="engines"></div><div id="detail"></div><div class="section"><b>02 / PATCH</b><small>4 VARIATIONS</small></div><div id="patches" class="patches"></div><div class="section"><b>03 / ENGINE CONTROLS</b><small>LIVE PARAMETERS</small></div><div id="params" class="params"></div><div id="drumsection"><div class="section"><b>04 / DRUM MACHINE · STYLE LAB</b><small>4 × 16 STEPS / 64 TOTAL</small></div>
+<div class="drumstyles" id="drumstyles"><button data-style="classic" class="selected">CLASSIC</button><button data-style="algorave">ALGORAVE</button><button data-style="minimal">MINIMAL</button><button data-style="progressive">PROGRESSIVE</button><button data-style="techno">TECHNO</button><button data-style="hardcore">HARDCORE</button><button data-style="breakbeat">BREAKBEAT</button><button data-style="dub">DUB</button></div>
 <div class="drumrow"><button id="kit808" class="selected">808</button><button id="kit909">909</button><button id="beatplay">▶ BEAT</button><button id="beatstop">■</button><span id="drumprogress">01 / 64</span></div>
 <div class="drumrow"><span id="patternlabel">PATTERN A</span><button class="patbank selected" data-bank="0">A</button><button class="patbank" data-bank="1">B</button><button class="patbank" data-bank="2">C</button><button class="patbank" data-bank="3">D</button><button id="patcopy">COPY → NEXT</button></div>
 <div id="drumgrid"></div>
 <div class="drumrow"><button id="patrandom">↝ RANDOM</button><button id="patclear">× CLEAR</button><button id="patreset">↺ DEFAULT</button></div>
 <div class="drumrow"><label>BPM <button id="bpmdown">−</button><strong id="beatbpm">120</strong><button id="bpmup">+</button></label><label>SWING <input id="beatswing" type="range" min="0" max="60" value="8"><span id="swingread">8%</span></label><label>DRUM VOL <input id="beatvolume" type="range" min="0" max="100" value="55"></label></div>
-<div id="notice-drums" style="font-size:9px;color:#8ca9b5;margin-bottom:11px;line-height:1.5">PLAY enchaîne A → B → C → D en boucle. Les sons 808/909 sont synthétisés avec Web Audio ; pas de samples Roland.</div></div>
+<div id="notice-drums" style="font-size:9px;color:#8ca9b5;margin-bottom:11px;line-height:1.5">Sélectionne un style : ses 4 patterns A–D et son groove sont chargés. 808 / 909 choisit le timbre. Tous les pas restent éditables.</div></div>
 <div class="bottomrow"><label>MASTER <input id="volume" type="range" min="0" max="100" value="57"></label><label>SPACE <input id="space" type="range" min="0" max="100" value="36"></label><span id="voices">0 VOICES</span></div><div id="notice">Les noms et presets viennent de Beatherapy'Omix (Swift). Les sons sont des approximations Web Audio originales, et non son DSP natif (Clouds / Rings).</div></section></main>
 <script>
 (()=>{'use strict';
@@ -92,23 +93,98 @@ const patternsDefaults=[
  ['x...x...x...x...','....x.......x...','....x.......x...','x.x.xxx.x.x.xxx.','..x.......x.....','..............x.'],
  ['x...x...x.x.x.xx','....x.......x...','............x...','xxxxxxxxxxxxxxxx','......x...x...x.','............x.xx']
 ];
-let drumBanks=patternsDefaults.map(bank=>bank.map(line=>Array.from(line,c=>c==='x')));
+const rhythmStyles={
+ classic:{bpm:120,swing:8,kit:808,description:'Classic drum-machine groove · variation progressive A–D'},
+ algorave:{bpm:138,swing:12,kit:909,description:'Live-code inspired: shifting polymetric accents, offbeat hats, glitch fills'},
+ minimal:{bpm:124,swing:6,kit:808,description:'Sparse and dry: kick foundation, tiny hats, negative space'},
+ progressive:{bpm:126,swing:8,kit:909,description:'A–D gradual build: percussion and hats enter over four bars'},
+ techno:{bpm:140,swing:4,kit:909,description:'Driving four-on-the-floor, offbeat open hats and rolling toms'},
+ hardcore:{bpm:174,swing:1,kit:909,description:'Fast hard kicks, aggressive snare accents and dense hats'},
+ breakbeat:{bpm:135,swing:15,kit:909,description:'Syncopated kick/snare, break fills and restless hats'},
+ dub:{bpm:116,swing:24,kit:808,description:'Spacious low kick, rim/clap accents and swung hi-hats'}
+};
+function generateStyleBanks(name){
+ if(name==='classic')return patternsDefaults.map(bank=>bank.map(line=>Array.from(line,c=>c==='x')));
+ const grids=Array.from({length:4},()=>Array.from({length:6},()=>Array(16).fill(false)));
+ const put=(g,r,steps)=>steps.forEach(i=>{g[r][i%16]=true});
+ const seed=(r,b,s)=>((r*47+b*31+s*19+name.length*13)%17);
+ for(let b=0;b<4;b++){
+  const g=grids[b];
+  switch(name){
+  case 'algorave':
+   put(g,0,[0,4,8,12,...(b%2?[10,15]:[14])]);put(g,1,[4,12,...(b>1?[7,15]:[])]);
+   for(let i=0;i<16;i++)if((i+b)%3!==1||b===3&&i%2===0)g[3][i]=true;
+   put(g,2,[...(b%2?[3,11,14]:[6,13]),...(b===3?[15]:[])]);
+   put(g,4,[(3+b*2)%16,11,...(b>1?[7]:[])]);
+   put(g,5,[(5+b*3)%16, ...(b>0?[15]:[])]);break;
+  case 'minimal':
+   put(g,0,[0,4,8,12]);put(g,1,[12]);put(g,3,[2,6,10,14,...(b>1?[15]:[])]);
+   if(b%2)put(g,2,[11]);if(b===3)put(g,4,[14]);break;
+  case 'progressive':
+   put(g,0,[0,4,8,12,...(b===3?[15]:[])]);
+   put(g,1,[4,12]);put(g,3,b===0?[2,10]:b===1?[2,6,10,14]:b===2?[0,2,4,6,8,10,12,14]:Array.from({length:16},(_,i)=>i));
+   if(b>=1)put(g,4,[6,14]);if(b>=2)put(g,2,[12]);if(b===3)put(g,5,[7,15]);break;
+  case 'techno':
+   put(g,0,[0,4,8,12,...(b===3?[14,15]:[])]);
+   put(g,1,[4,12]);put(g,3,[0,2,4,6,8,10,12,14,...(b>1?[3,11,15]:[])]);
+   put(g,4,[2,6,10,14]);put(g,5,b<2?[7,15]:[3,7,11,15]);
+   if(b>=2)put(g,2,[12]);break;
+  case 'hardcore':
+   put(g,0,[0,4,8,12,...(b>=1?[2,10]:[]),...(b>=2?[14,15]:[])]);
+   put(g,1,[4,12,...(b>=2?[7,15]:[])]);
+   put(g,3,Array.from({length:16},(_,i)=>i).filter(i=>b>=2||i%2===0));
+   put(g,2,[4,12,...(b>1?[0,8,15]:[])]);
+   put(g,4,[3,7,11,15]);if(b>0)put(g,5,[6,14]);break;
+  case 'breakbeat':
+   put(g,0,b%2?[0,3,7,10,14]:[0,6,10,15]);
+   put(g,1,[4,12,...(b>=1?[14]:[]),...(b===3?[7,15]:[])]);
+   put(g,3,Array.from({length:16},(_,i)=>i).filter(i=>(i+b)%3!==0));
+   put(g,2,[...(b>1?[11,15]:[11])]);
+   put(g,4,[6,14]);if(b>=2)put(g,5,[3,10]);break;
+  case 'dub':
+   put(g,0,[0,8,...(b>=2?[12]:[])]);
+   put(g,1,[12,...(b===3?[4]:[])]);
+   put(g,3,[2,6,10,14,...(b>1?[7]:[])]);
+   put(g,2,[...(b%2?[3,11]:[7])]);put(g,4,[6,14]);
+   if(b===3)put(g,5,[15]);break;
+  }
+ }
+ return grids;
+}
+let drumStyle='classic',styleMemory={classic:generateStyleBanks('classic')},drumBanks=styleMemory.classic;
+function setRhythmStyle(name){
+ if(!rhythmStyles[name])return;
+ styleMemory[drumStyle]=drumBanks;
+ drumStyle=name;
+ if(!styleMemory[name])styleMemory[name]=generateStyleBanks(name);
+ drumBanks=styleMemory[name];
+ const cfg=rhythmStyles[name];drumBpm=cfg.bpm;drumSwing=cfg.swing/100;drumKit=cfg.kit;
+ $('beatbpm').textContent=drumBpm;$('beatswing').value=cfg.swing;$('swingread').textContent=cfg.swing+'%';
+ $('notice-drums').textContent=cfg.description+' · 64 pas A–D ; chaque pattern reste modifiable.';
+ drumBank=0;
+ if(drumPlaying&&audio){drumNext=Math.max(audio.currentTime+.05,drumNext);drumPos=-1}
+ renderDrums();
+}
 let drumBank=0,drumKit=808,drumBpm=120,drumSwing=.08,drumPlaying=false,drumPos=-1,drumNext=0,drumTimer=null,drumNoise=null;
 function getDrumNoise(){if(drumNoise)return drumNoise;const n=Math.max(64,Math.floor(audio.sampleRate*.85)),b=audio.createBuffer(1,n,audio.sampleRate),d=b.getChannelData(0);for(let i=0;i<n;i++)d[i]=Math.random()*2-1;drumNoise=b;return b}
 function drumOsc(t,f,v,d,w='sine',fall=null){const o=audio.createOscillator(),g=audio.createGain();o.type=w;o.frequency.setValueAtTime(f,t);if(fall)o.frequency.exponentialRampToValueAtTime(Math.max(25,fall),t+Math.min(d*.75,.22));g.gain.setValueAtTime(Math.max(.0001,v),t);g.gain.exponentialRampToValueAtTime(.0001,t+d);o.connect(g);g.connect(drumBus);o.start(t);o.stop(t+d+.015)}
 function drumNoiseHit(t,vol,dur,freq=1400,band=false){const src=audio.createBufferSource(),fil=audio.createBiquadFilter(),g=audio.createGain();src.buffer=getDrumNoise();fil.type=band?'bandpass':'highpass';fil.frequency.value=freq;if(band)fil.Q.value=.65;g.gain.setValueAtTime(Math.max(.0001,vol),t);g.gain.exponentialRampToValueAtTime(.0001,t+dur);src.connect(fil);fil.connect(g);g.connect(drumBus);src.start(t);src.stop(t+dur+.012)}
 function drumSound(row,t){
  const is808=drumKit===808;
- if(row===0){drumOsc(t,is808?160:175,is808?.63:.55,is808?.48:.27,'sine',is808?43:54);if(!is808)drumNoiseHit(t,.035,.035,1100)}
- else if(row===1){drumNoiseHit(t,is808?.20:.28,is808?.16:.19,is808?1300:1750);drumOsc(t,is808?175:205,.10,.11,'triangle',145)}
- else if(row===2){for(let k=0;k<3;k++)drumNoiseHit(t+k*.011,is808?.082:.105,.055,k===1?1700:1200,true)}
- else if(row===3){drumNoiseHit(t,is808?.105:.145,is808?.07:.045,is808?5700:7300)}
- else if(row===4){drumNoiseHit(t,is808?.14:.17,is808?.38:.29,is808?4600:5900)}
- else if(row===5){drumOsc(t,is808?185:210,.25,.31,'sine',is808?76:98)}
+ const hardcore=drumStyle==='hardcore',minimal=drumStyle==='minimal',dub=drumStyle==='dub';
+ const power=hardcore?1.23:minimal?.65:1;
+
+ if(row===0){drumOsc(t,hardcore?205:is808?160:175,(is808?.63:.55)*power,hardcore?.32:is808?.48:.27,hardcore?'triangle':'sine',hardcore?49:is808?43:54);if(!is808)drumNoiseHit(t,hardcore?.085:.035,.035,1100)}
+ else if(row===1){drumNoiseHit(t,(is808?.20:.28)*power,is808?.16:.19,is808?1300:1750);drumOsc(t,is808?175:205,.10*power,.11,'triangle',145)}
+ else if(row===2){for(let k=0;k<3;k++)drumNoiseHit(t+k*.011,(is808?.082:.105)*power,.055,k===1?1700:1200,true)}
+ else if(row===3){drumNoiseHit(t,(is808?.105:.145)*power,is808?.07:.045,is808?5700:7300)}
+ else if(row===4){drumNoiseHit(t,(is808?.14:.17)*power,dub?.52:is808?.38:.29,is808?4600:5900)}
+ else if(row===5){drumOsc(t,is808?185:210,.25*power,.31,'sine',is808?76:98)}
 }
 function renderDrums(){
  document.querySelectorAll('.patbank').forEach(b=>b.classList.toggle('selected',+b.dataset.bank===drumBank));
  $('patternlabel').textContent='PATTERN '+String.fromCharCode(65+drumBank);
+ document.querySelectorAll('#drumstyles [data-style]').forEach(b=>{b.classList.toggle('selected',b.dataset.style===drumStyle);b.setAttribute('aria-pressed',String(b.dataset.style===drumStyle))});
  $('kit808').classList.toggle('selected',drumKit===808);$('kit909').classList.toggle('selected',drumKit===909);
  $('beatplay').classList.toggle('playing',drumPlaying);$('beatplay').textContent=drumPlaying?'Ⅱ PAUSE':'▶ BEAT';
  let h='';drumNames.forEach((name,r)=>{h+='<div class="drtrack"><span>'+name+'</span>';for(let i=0;i<16;i++)h+='<button type="button" data-r="'+r+'" data-s="'+i+'" aria-label="'+name+' '+(i+1)+'" aria-pressed="'+drumBanks[drumBank][r][i]+'" class="drstep '+(drumBanks[drumBank][r][i]?'active ':'')+(drumPlaying&&drumBank===Math.floor(drumPos/16)&&drumPos%16===i?'now':'')+'"></button>';h+='</div>'});$('drumgrid').innerHTML=h
@@ -120,13 +196,14 @@ function drumTick(){if(!drumPlaying||!audio)return;while(drumNext<audio.currentT
 function stopDrums(){drumPlaying=false;if(drumTimer)clearInterval(drumTimer);drumTimer=null;drumPos=-1;renderDrums();$('drumprogress').textContent='01 / 64'}
 function toggleDrums(){if(drumPlaying){drumPlaying=false;if(drumTimer)clearInterval(drumTimer);drumTimer=null;renderDrums();return}init();if(!audio)return;audio.resume();drumPlaying=true;drumNext=audio.currentTime+.05;if(drumPos<0)drumPos=-1;drumTimer=setInterval(drumTick,25);renderDrums()}
 $('beatplay').onclick=toggleDrums;$('beatstop').onclick=stopDrums;
+$('drumstyles').addEventListener('click',e=>{const b=e.target.closest('button[data-style]');if(b)setRhythmStyle(b.dataset.style)});
 $('kit808').onclick=()=>{drumKit=808;renderDrums()};$('kit909').onclick=()=>{drumKit=909;renderDrums()};
 document.querySelectorAll('.patbank').forEach(b=>b.onclick=()=>{drumBank=+b.dataset.bank;renderDrums()});
 $('drumgrid').addEventListener('click',e=>{const b=e.target.closest('button[data-r]');if(!b)return;const r=+b.dataset.r,s=+b.dataset.s;drumBanks[drumBank][r][s]=!drumBanks[drumBank][r][s];b.classList.toggle('active',drumBanks[drumBank][r][s]);b.setAttribute('aria-pressed',drumBanks[drumBank][r][s])});
 $('patcopy').onclick=()=>{const next=(drumBank+1)%4;drumBanks[next]=drumBanks[drumBank].map(r=>r.slice());drumBank=next;renderDrums()};
 $('patrandom').onclick=()=>{drumBanks[drumBank]=drumBanks[drumBank].map((row,r)=>row.map((v,s)=>Math.random()<([.29,.14,.1,.58,.12,.10][r])));renderDrums()};
 $('patclear').onclick=()=>{drumBanks[drumBank]=drumBanks[drumBank].map(row=>row.map(()=>false));renderDrums()};
-$('patreset').onclick=()=>{drumBanks[drumBank]=patternsDefaults[drumBank].map(line=>Array.from(line,c=>c==='x'));renderDrums()};
+$('patreset').onclick=()=>{drumBanks[drumBank]=generateStyleBanks(drumStyle)[drumBank].map(row=>row.slice());renderDrums()};
 $('bpmdown').onclick=()=>{$('beatbpm').textContent=drumBpm=Math.max(60,drumBpm-2)};
 $('bpmup').onclick=()=>{$('beatbpm').textContent=drumBpm=Math.min(200,drumBpm+2)};
 $('beatswing').oninput=e=>{drumSwing=+e.target.value/100;$('swingread').textContent=e.target.value+'%'};
