@@ -1,12 +1,12 @@
 <!doctype html>
 <html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1,user-scalable=no"><meta name="theme-color" content="#03080d">
-<title>ASCII FREQUENCY — CALM / FOCUS</title>
+<title>ASCII FREQUENCY — CALM / FOCUS / LIBIDO</title>
 <style>
 *{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#03080d;color:#d8f4f5;font:11px ui-monospace,Menlo,Monaco,monospace;overscroll-behavior:none;-webkit-user-select:none;user-select:none}
 #visual{position:fixed;inset:0;width:100vw;height:100dvh;touch-action:none;display:block}#ui{position:fixed;inset:0;pointer-events:none}
 #head{position:absolute;top:calc(14px + env(safe-area-inset-top));left:13px;right:13px;display:flex;justify-content:space-between;gap:8px;align-items:start}
 #brand{font-weight:800;letter-spacing:.12em;font-size:12px;text-shadow:0 1px 8px #000}#mini{font-size:9px;color:#86a6b0;margin-top:5px;letter-spacing:.05em}
-#toggle{display:flex;gap:6px;pointer-events:auto}button{font:inherit;color:#c5e9ec;background:#11222ccc;border:1px solid #547480;border-radius:6px;padding:11px 13px;min-height:43px;touch-action:manipulation}button.selected{background:#284136;color:#d5fabb;border-color:#b0f185}button:active{filter:brightness(1.25)}
+#toggle{display:flex;gap:5px;pointer-events:auto}#toggle button{padding:10px 8px;font-size:10px}#libido.selected{border-color:#ed9daf;color:#ffc7d8;background:#4a263b}button{font:inherit;color:#c5e9ec;background:#11222ccc;border:1px solid #547480;border-radius:6px;padding:11px 13px;min-height:43px;touch-action:manipulation}button.selected{background:#284136;color:#d5fabb;border-color:#b0f185}button:active{filter:brightness(1.25)}
 #hint{position:absolute;left:14px;right:14px;bottom:calc(18px + env(safe-area-inset-bottom));display:flex;justify-content:space-between;align-items:end;gap:15px;line-height:1.7;color:#a7c6cb;text-shadow:0 1px 8px black}
 #hint strong{color:#d2f5e4}#level{font-variant-numeric:tabular-nums;color:#b9ffac;text-align:right;min-width:76px}
 #center{position:absolute;inset:0;display:grid;place-items:center;text-align:center;transition:opacity .4s}#center.hidden{opacity:0}#center div{font-size:clamp(15px,4.4vw,24px);font-weight:700;letter-spacing:.13em;max-width:85%;line-height:1.65;text-shadow:0 1px 12px black}#center small{display:block;font-size:10px;font-weight:400;color:#aec3cb;letter-spacing:.08em;margin-top:9px}
@@ -14,7 +14,7 @@
 @media(max-width:365px){#brand{font-size:10px}button{padding:9px 10px}}
 </style></head><body>
 <canvas id="visual" aria-label="Surface ASCII interactive"></canvas><div id="ui">
-<div id="head"><div><div id="brand">ASCII / FREQUENCY</div><div id="mini">AMBIENT TOUCH INSTRUMENT</div></div><div id="toggle"><button class="selected" id="calm" type="button">CALM</button><button id="focus" type="button">FOCUS</button></div></div>
+<div id="head"><div><div id="brand">ASCII / FREQUENCY</div><div id="mini">AMBIENT TOUCH INSTRUMENT</div></div><div id="toggle"><button class="selected" id="calm" type="button">CALM</button><button id="focus" type="button">FOCUS</button><button id="libido" type="button">LIBIDO</button></div></div>
 <div id="info">CALM · 110 Hz · SINE / SOFT HARMONICS</div>
 <div id="center"><div>TOUCH THE FIELD<small>Un doigt fait naître le son.<br>Glisse pour faire onduler les caractères.</small></div></div>
 <div id="error" role="status"></div>
@@ -23,23 +23,23 @@
 <script>
 (()=>{'use strict';
 const $=id=>document.getElementById(id),cv=$('visual'),g=cv.getContext('2d',{alpha:false});if(!g){$('error').textContent='Canvas indisponible';return}
-let mode='calm',audio=null,output=null,filter=null,delay=null,wet=null,voices=new Map(),touches=new Map(),ripples=[],width=1,height=1,scale=1,last=0;
+let mode='calm',audio=null,output=null,filter=null,delay=null,wet=null,voices=new Map(),touches=new Map(),ripples=[],width=1,height=1,scale=1,last=0,modulationFrame=0;
 const clamp=(x,a=0,b=1)=>Math.max(a,Math.min(b,x));
 function resize(){width=Math.max(1,innerWidth);height=Math.max(1,innerHeight);scale=Math.min(2,devicePixelRatio||1);cv.width=Math.round(width*scale);cv.height=Math.round(height*scale);g.setTransform(scale,0,0,scale,0,0)}
 window.addEventListener('resize',resize);resize();
 function initAudio(){if(audio)return true;try{const AC=window.AudioContext||window.webkitAudioContext;if(!AC)throw Error('Web Audio non disponible');audio=new AC();output=audio.createGain();output.gain.value=.32;const limiter=audio.createDynamicsCompressor();limiter.threshold.value=-20;limiter.ratio.value=5;limiter.attack.value=.006;limiter.release.value=.2;filter=audio.createBiquadFilter();filter.type='lowpass';filter.frequency.value=1300;filter.Q.value=.6;delay=audio.createDelay(.8);delay.delayTime.value=.31;wet=audio.createGain();wet.gain.value=.08;filter.connect(output);filter.connect(delay);delay.connect(wet);wet.connect(output);output.connect(limiter);limiter.connect(audio.destination);return true}catch(e){$('error').textContent='Audio indisponible : '+e.message;return false}}
 function stopVoice(id){const v=voices.get(id);if(!v||!audio)return;const t=audio.currentTime;v.env.gain.cancelScheduledValues(t);v.env.gain.setTargetAtTime(.0001,t,.12);try{v.o1.stop(t+.7);v.o2.stop(t+.7)}catch(e){}voices.delete(id)}
 function stopAll(){for(const id of Array.from(voices.keys()))stopVoice(id);touches.clear();updateLevel()}
-function startVoice(id,x,y){if(!initAudio())return;audio.resume();stopVoice(id);const o1=audio.createOscillator(),o2=audio.createOscillator(),env=audio.createGain(),local=audio.createBiquadFilter();local.type='lowpass';local.Q.value=.6;env.gain.value=.0001;o1.type=mode==='calm'?'sine':'triangle';o2.type='sine';o1.connect(local);o2.connect(local);local.connect(env);env.connect(filter);o1.start();o2.start();const v={o1,o2,local,env};voices.set(id,v);updateVoice(id,x,y,0,true)}
-function updateVoice(id,x,y,speed,initial=false){if(!audio)return;const v=voices.get(id);if(!v)return;const nx=clamp(x/width),ny=clamp(y/height),motion=clamp(speed/1200),base=mode==='calm'?110:220,pitch=base*Math.pow(2,(nx-.5)*(mode==='calm'?.22:.42)),t=audio.currentTime;
+function startVoice(id,x,y){if(!initAudio())return;audio.resume();stopVoice(id);const o1=audio.createOscillator(),o2=audio.createOscillator(),env=audio.createGain(),local=audio.createBiquadFilter();local.type='lowpass';local.Q.value=.6;env.gain.value=.0001;o1.type=mode==='focus'?'triangle':'sine';o2.type='sine';o1.connect(local);o2.connect(local);local.connect(env);env.connect(filter);o1.start();o2.start();const v={o1,o2,local,env};voices.set(id,v);updateVoice(id,x,y,0,true)}
+function updateVoice(id,x,y,speed,initial=false){if(!audio)return;const v=voices.get(id);if(!v)return;const nx=clamp(x/width),ny=clamp(y/height),motion=clamp(speed/1200),sensual=mode==='libido',base=sensual?55:mode==='calm'?110:220,pitch=base*Math.pow(2,(nx-.5)*(sensual?.12:mode==='calm'?.22:.42)),t=audio.currentTime;
 v.o1.frequency.setTargetAtTime(pitch,t,.055);
-v.o2.frequency.setTargetAtTime(pitch*(mode==='calm'?2:1.5),t,.065);
-v.local.frequency.setTargetAtTime((mode==='calm'?480:950)+(1-ny)*(mode==='calm'?950:3300)+motion*800,t,.07);
-v.env.gain.setTargetAtTime((mode==='calm'?.075:.052)+(.05*motion)+(.018*(1-ny)),t,initial?.14:.065);
-if(filter)filter.frequency.setTargetAtTime((mode==='calm'?1150:2400)+nx*(mode==='calm'?1000:3200),t,.11);
+v.o2.frequency.setTargetAtTime(pitch*(mode==='calm'||sensual?2:1.5),t,.065);
+v.local.frequency.setTargetAtTime((sensual?260:mode==='calm'?480:950)+(1-ny)*(sensual?750:mode==='calm'?950:3300)+motion*(sensual?300:800),t,.07);
+v.env.gain.setTargetAtTime((sensual?.065:mode==='calm'?.075:.052)+(sensual?.018:.05)*motion+(.014*(1-ny)),t,initial?.2:.09);
+if(filter)filter.frequency.setTargetAtTime((sensual?450:mode==='calm'?1150:2400)+nx*(sensual?750:mode==='calm'?1000:3200),t,.11);
 }
-function setMode(next){if(mode===next)return;stopAll();mode=next;$('calm').classList.toggle('selected',mode==='calm');$('focus').classList.toggle('selected',mode==='focus');$('info').textContent=mode==='calm'?'CALM · 110 Hz · SINE / SOFT HARMONICS':'FOCUS · 220 Hz · TRIANGLE / BRIGHT HARMONICS';$('level').firstChild.textContent=mode.toUpperCase();if(wet&&audio)wet.gain.setTargetAtTime(mode==='calm'?.09:.045,audio.currentTime,.15)}
-$('calm').addEventListener('click',()=>setMode('calm'));$('focus').addEventListener('click',()=>setMode('focus'));
+function setMode(next){if(mode===next)return;stopAll();mode=next;for(const m of ['calm','focus','libido'])$(m).classList.toggle('selected',mode===m);$('info').textContent=mode==='calm'?'CALM · 110 Hz · SINE / SOFT HARMONICS':mode==='focus'?'FOCUS · 220 Hz · TRIANGLE / BRIGHT HARMONICS':'LIBIDO · 55 + 110 Hz · WARM PULSE (SOUND DESIGN)';$('level').firstChild.textContent=mode.toUpperCase();if(wet&&audio)wet.gain.setTargetAtTime(mode==='libido'?.14:mode==='calm'?.09:.045,audio.currentTime,.15)}
+for(const m of ['calm','focus','libido'])$(m).addEventListener('click',()=>setMode(m));
 function eventPoint(e){const r=cv.getBoundingClientRect();return {x:e.clientX-r.left,y:e.clientY-r.top}}
 function pulse(x,y,weight=1){ripples.push({x,y,t:performance.now(),weight});if(ripples.length>35)ripples.shift()}
 function updateLevel(){const n=touches.size;const magnitude=n?Math.round(clamp(Array.from(touches.values()).reduce((acc,p)=>acc+p.motion,0)/n)*100):0;$('value').textContent=magnitude+'%'}
@@ -48,11 +48,11 @@ cv.addEventListener('pointermove',e=>{const p=touches.get(e.pointerId);if(!p)ret
 function pointerUp(e){if(!touches.has(e.pointerId))return;e.preventDefault();stopVoice(e.pointerId);touches.delete(e.pointerId);updateLevel()}
 for(const type of ['pointerup','pointercancel','lostpointercapture'])cv.addEventListener(type,pointerUp,{passive:false});
 document.addEventListener('visibilitychange',()=>{if(document.hidden)stopAll()});
-function draw(now){requestAnimationFrame(draw);if(now-last<30)return;last=now;g.fillStyle='#03080d';g.fillRect(0,0,width,height);const fontSize=11,stepX=width<500?10.5:12,stepY=15,t=now*.001,calm=mode==='calm',chars=calm?' .,:;-=+*oO#':' .,:;+=*#%@&';
+function draw(now){requestAnimationFrame(draw);if(now-last<30)return;last=now;g.fillStyle='#03080d';g.fillRect(0,0,width,height);const fontSize=11,stepX=width<500?10.5:12,stepY=15,t=now*.001,calm=mode==='calm',sensual=mode==='libido',chars=calm?' .,:;-=+*oO#':sensual?' .,:;~+*oO@':' .,:;+=*#%@&';if(sensual&&audio){const pulse=.86+.14*Math.sin(2*Math.PI*.95*t);for(const v of voices.values())v.env.gain.setTargetAtTime(.065*pulse,audio.currentTime,.12)}
 ripples=ripples.filter(r=>now-r.t<1900);g.font=fontSize+'px Menlo,Monaco,monospace';g.textAlign='center';g.textBaseline='middle';
-for(let y=stepY/2;y<height;y+=stepY){for(let x=stepX/2;x<width;x+=stepX){let dx=0,dy=0,intensity=0;for(const r of ripples){let age=(now-r.t)/1000,dist=Math.hypot(x-r.x,y-r.y)+.01,front=age*(calm?100:190),ring=Math.exp(-Math.pow((dist-front)/(calm?45:33),2))*Math.exp(-age*.95)*r.weight;dx+=(x-r.x)/dist*ring*16;dy+=(y-r.y)/dist*ring*16;intensity+=ring}
-for(const p of touches.values()){let rx=x-p.x,ry=y-p.y,d2=rx*rx+ry*ry+320,force=Math.min(1.3,2700/d2);dx+=-ry/Math.sqrt(d2)*force*(calm?9:17);dy+=rx/Math.sqrt(d2)*force*(calm?9:17);intensity+=force*.18}
-const wave=(Math.sin(x*.017+t*(calm?.6:1.2))*Math.cos(y*.023-t*(calm?.4:1.1))+1)/2,grain=Math.sin(x*.06+y*.08-t*(calm?.8:2.6)),v=.15+wave*.6+grain*.12+intensity*.4;if(v<.23)continue;const ci=Math.min(chars.length-1,Math.max(1,Math.floor(v*chars.length*.87)));const alpha=clamp(.19+v*.64,.12,.88),hue=calm?183:93;g.fillStyle='hsla('+(hue+intensity*30)+','+(calm?43:50)+'%,'+(65+intensity*14)+'%,'+alpha+')';g.fillText(chars[ci],x+dx,y+dy)}}
+for(let y=stepY/2;y<height;y+=stepY){for(let x=stepX/2;x<width;x+=stepX){let dx=0,dy=0,intensity=0;for(const r of ripples){let age=(now-r.t)/1000,dist=Math.hypot(x-r.x,y-r.y)+.01,front=age*(sensual?78:calm?100:190),ring=Math.exp(-Math.pow((dist-front)/(sensual?55:calm?45:33),2))*Math.exp(-age*.95)*r.weight;dx+=(x-r.x)/dist*ring*16;dy+=(y-r.y)/dist*ring*16;intensity+=ring}
+for(const p of touches.values()){let rx=x-p.x,ry=y-p.y,d2=rx*rx+ry*ry+320,force=Math.min(1.3,2700/d2);dx+=-ry/Math.sqrt(d2)*force*(sensual?7:calm?9:17);dy+=rx/Math.sqrt(d2)*force*(sensual?7:calm?9:17);intensity+=force*.18}
+const wave=(Math.sin(x*.017+t*(sensual?.35:calm?.6:1.2))*Math.cos(y*.023-t*(sensual?.35:calm?.4:1.1))+1)/2,grain=Math.sin(x*.06+y*.08-t*(sensual?.48:calm?.8:2.6)),v=.15+wave*.6+grain*.12+intensity*.4;if(v<.23)continue;const ci=Math.min(chars.length-1,Math.max(1,Math.floor(v*chars.length*.87)));const alpha=clamp(.19+v*.64,.12,.88),hue=sensual?339:calm?183:93;g.fillStyle='hsla('+(hue+intensity*30)+','+(sensual?43:calm?43:50)+'%,'+(65+intensity*14)+'%,'+alpha+')';g.fillText(chars[ci],x+dx,y+dy)}}
 }requestAnimationFrame(draw);
 })();
 </script></body></html>
