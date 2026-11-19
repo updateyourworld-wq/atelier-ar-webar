@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1,user-scalable=no"><meta name="theme-color" content="#04080c">
+<title>TOUCH / FIELD V2 — living sound sculpture</title>
+<style>
+:root{color-scheme:dark;--ink:#d6eeeb;--muted:#9eafb4;--accent:#a4d7e6}
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#04080c;color:var(--ink);font:11px ui-monospace,SFMono-Regular,Menlo,monospace;overscroll-behavior:none;-webkit-user-select:none;user-select:none}button{font:inherit;touch-action:manipulation;min-height:41px;background:#0b2029db;color:var(--ink);border:1px solid #50707b;border-radius:6px;padding:8px 10px}button.active{border-color:#bff4cf;background:#244237;color:#d9ffe7}button:disabled{opacity:.4}canvas{position:fixed;inset:0;width:100%;height:100dvh;display:block;touch-action:none}#ui{position:fixed;inset:0;pointer-events:none}#top{position:absolute;left:12px;right:12px;top:calc(10px + env(safe-area-inset-top));display:flex;justify-content:space-between;align-items:start;gap:8px}#brand{font-weight:800;font-size:12px;letter-spacing:.15em;text-shadow:0 1px 8px black}#subtitle{font-size:9px;color:#a1bcc4;margin-top:5px}#modebar{pointer-events:auto;display:flex;gap:5px}#modebar button{padding:8px;font-size:10px}#bottom{position:absolute;bottom:calc(13px + env(safe-area-inset-bottom));left:12px;right:12px;display:flex;align-items:end;justify-content:space-between;gap:10px}#instructions{font-size:10px;line-height:1.55;color:#b6cfce;max-width:58%;text-shadow:0 1px 8px black}#controls{pointer-events:auto;display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end;max-width:43%}#controls button{font-size:10px;padding:7px 9px}#freeze.active{color:#daf3ff;background:#25445e;border-color:#89ceee}#replay.active{color:#daffd6;background:#2b503a;border-color:#a1ffae}#testaudio{border-color:#bdffc0;background:#1e3d35;color:#d6ffda}#center{position:absolute;inset:0;display:grid;place-items:center;text-align:center;pointer-events:none;transition:opacity .6s}#center.hidden{opacity:0}#center div{font-size:clamp(15px,4vw,22px);letter-spacing:.11em;font-weight:700;line-height:1.7;text-shadow:0 2px 12px black}#center small{display:block;font-weight:400;letter-spacing:.05em;font-size:11px;color:#a3bcc1;margin-top:9px}#status{position:absolute;top:calc(63px + env(safe-area-inset-top));left:12px;font-size:9px;color:#a8d8db;text-shadow:0 1px 9px black;max-width:70%;line-height:1.6}#toast{position:absolute;top:27%;left:12%;right:12%;text-align:center;color:#d6f3e7;text-shadow:0 2px 10px black;font-size:13px;pointer-events:none;opacity:0;transition:opacity .2s}#toast.show{opacity:1}#rec{color:#ffa3a3}#timer{display:none}#rec.recording #timer{display:inline}@media(max-width:390px){#brand{font-size:10px}#modebar button{font-size:9px;padding:7px 5px}#controls button{padding:7px}#instructions{font-size:9px}}
+</style></head><body>
+<canvas id="field" aria-label="Champ ASCII tactile"></canvas><div id="ui">
+<div id="top"><div><div id="brand">TOUCH / FIELD · V2</div><div id="subtitle">LIVING SOUND SCULPTURE</div></div><div id="modebar"><button data-mode="drift" class="active">DRIFT</button><button data-mode="flow">FLOW</button><button data-mode="desire">DESIRE</button></div></div>
+<div id="status">READY · TOUCH TO DRAW AN ORGANISM</div><div id="center"><div>SCULPT THE SOUND<small>Trace un geste puis relâche.<br>Le son et la forme continuent de vivre.</small></div></div>
+<div id="toast"></div>
+<div id="bottom"><div id="instructions">DRAW = CREATE · RELEASE = LOOP<br>FREEZE = KEEP ORGANISMS<br>REPLAY = RESTART THEIR PATHS</div><div id="controls"><button id="freeze">❄ FREEZE</button><button id="replay">↻ REPLAY</button><button id="clear">CLEAR</button><button id="sound">SOUND ON</button><button id="rec">● 30s<span id="timer"></span></button></div></div>
+</div>
+<script>
+(()=>{'use strict';
+const $=id=>document.getElementById(id),cv=$('field'),c=cv.getContext('2d',{alpha:false});
+if(!c){$('status').textContent='CANVAS UNAVAILABLE';return}
+const clamp=(x,a=0,b=1)=>Math.max(a,Math.min(b,x));
+const colors={drift:{h:186,s:44},flow:{h:105,s:51},desire:{h:332,s:46}};
+const modes={drift:{root:174.61,scale:[0,2,5,7,9,12,14,17],wave:'sine',timbre:'triangle',decay:65,loop:8},flow:{root:220,scale:[0,2,3,5,7,10,12,15],wave:'triangle',timbre:'sine',decay:56,loop:6},desire:{root:130.81,scale:[0,3,5,7,10,12,15,19],wave:'sine',timbre:'triangle',decay:72,loop:10}};
+let mode='drift',W=1,H=1,dpr=1,ctx=null,bus=null,comp=null,room=null,roomGain=null,feedback=null,mediaDest=null,muted=false,recorder=null,recTimer=null,recording=false,recordingStart=0;
+let lastDraw=0,playingTouches=new Map(),organisms=[],nextOrganismId=1,phases=0,freezeOn=false,slowMotion=0;
+const MAX_ORGANISMS=4,MAX_PATH=180;
+function resize(){W=Math.max(innerWidth,1);H=Math.max(innerHeight,1);dpr=Math.min(2,devicePixelRatio||1);cv.width=Math.round(W*dpr);cv.height=Math.round(H*dpr);c.setTransform(dpr,0,0,dpr,0,0)}addEventListener('resize',resize);resize();
+function toast(s){$('toast').textContent=s;$('toast').classList.add('show');setTimeout(()=>$('toast').classList.remove('show'),1700)}
+function initAudio(){if(ctx)return true;try{const AC=window.AudioContext||window.webkitAudioContext;if(!AC)throw Error('Audio unsupported');ctx=new AC();bus=ctx.createGain();bus.gain.value=.85;comp=ctx.createDynamicsCompressor();comp.threshold.value=-20;comp.ratio.value=5;comp.attack.value=.012;comp.release.value=.29;room=ctx.createDelay(.95);room.delayTime.value=.32;roomGain=ctx.createGain();roomGain.gain.value=.12;feedback=ctx.createGain();feedback.gain.value=.17;bus.connect(comp);bus.connect(room);room.connect(roomGain);roomGain.connect(comp);room.connect(feedback);feedback.connect(room);comp.connect(ctx.destination);mediaDest=ctx.createMediaStreamDestination();comp.connect(mediaDest);return true}catch(e){$('status').textContent='AUDIO ERROR: '+e.message;return false}}
+function unlockAudio(){if(!initAudio())return;try{const promise=ctx.resume();if(promise&&promise.then)promise.then(()=>{$('status').textContent=ctx.state==='running'?'AUDIO READY · TOUCH TO CREATE':'AUDIO '+ctx.state.toUpperCase()}).catch(e=>$('status').textContent='AUDIO BLOCKED: '+e.message)}catch(e){$('status').textContent='AUDIO BLOCKED: '+e.message}}
+function testSound(){
+ unlockAudio();if(!ctx)return;
+ // Short audible diagnostic chord, chosen above the low-frequency rolloff of phone speakers.
+ const t=ctx.currentTime,oscs=[440,554.37,659.25];
+ for(const freq of oscs){const o=ctx.createOscillator(),gain=ctx.createGain();o.type='sine';o.frequency.value=freq;gain.gain.setValueAtTime(.0001,t);gain.gain.linearRampToValueAtTime(.072,t+.05);gain.gain.setTargetAtTime(.0001,t+.55,.13);o.connect(gain);gain.connect(bus);o.start(t);o.stop(t+1.3)}
+ $('status').textContent='TEST SOUND · 440 / 554 / 659 Hz';
+}
+$('testaudio').addEventListener('click',testSound);
+function noteFromX(nx,m){const scale=modes[m].scale;let ix=Math.min(scale.length-1,Math.floor(nx*scale.length));return modes[m].root*Math.pow(2,scale[ix]/12)}
+function createAudio(o){if(!initAudio())return;if(ctx.state==='suspended')ctx.resume();const a=ctx.createOscillator(),b=ctx.createOscillator(),f=ctx.createBiquadFilter(),gain=ctx.createGain();const profile=modes[o.mode];a.type=profile.wave;b.type=profile.timbre;f.type='lowpass';f.Q.value=.8;gain.gain.value=.0001;a.connect(f);b.connect(f);f.connect(gain);gain.connect(bus);a.start();b.start();o.audio={a,b,f,gain};o.bornAudio=ctx.currentTime;updateAudio(o,performance.now(),true)}
+function updateAudio(o,now,first=false){if(!ctx||!o.audio)return;const p=sample(o,now),pr=modes[o.mode],nx=p.x,ny=p.y,cycle=(now-o.born)/1000/(pr.loop||8),swell=.73+.27*Math.sin(cycle*Math.PI*2),level=(.038+.11*o.life)*swell*(o.active?1:.82),fq=noteFromX(nx,o.mode),a=o.audio;
+a.a.frequency.setTargetAtTime(fq,ctx.currentTime,.085);a.b.frequency.setTargetAtTime(fq*(o.mode==='flow'?1.5:2)*(1+.003*Math.sin(cycle*6.28)),ctx.currentTime,.11);
+a.f.frequency.setTargetAtTime(520+Math.pow(1-ny,1.55)*(o.mode==='flow'?4800:2800),ctx.currentTime,.12);
+a.gain.gain.setTargetAtTime(Math.max(.0001,level),ctx.currentTime,first?.32:.18)}
+function destroy(o){if(!o.audio||!ctx)return;const t=ctx.currentTime;o.audio.gain.gain.setTargetAtTime(.00001,t,.14);for(const x of [o.audio.a,o.audio.b])try{x.stop(t+.85)}catch(e){}o.audio=null}
+function retireOldest(){while(organisms.length>MAX_ORGANISMS){let i=organisms.findIndex(o=>!o.active);if(i<0)i=0;const [old]=organisms.splice(i,1);destroy(old)}}
+function sample(o,now){
+ const path=o.path;if(!path.length)return{x:.5,y:.5};if(path.length===1)return path[0];
+ if(o.active)return path[path.length-1];
+ const period=modes[o.mode].loop*1000,phase=((now-o.released)%period+period)%period/period;
+ const at=phase*(path.length-1),i=Math.floor(at),u=at-i;
+ const a=path[Math.max(0,i-1)],b=path[i],d=path[Math.min(path.length-1,i+1)],e=path[Math.min(path.length-1,i+2)];
+ const interp=(k)=>clamp(.5*((2*b[k])+(-a[k]+d[k])*u+(2*a[k]-5*b[k]+4*d[k]-e[k])*u*u+(-a[k]+3*b[k]-3*d[k]+e[k])*u*u*u));
+ return{x:interp('x'),y:interp('y')};
+}
+function addPoint(o,x,y){const p={x:clamp(x/W),y:clamp(y/H)};if(o.path.length>=MAX_PATH)o.path=o.path.filter((_,i)=>i%2===0);o.path.push(p)}
+function newOrganism(id,x,y){$('center').classList.add('hidden');const o={id:nextOrganismId++,mode,created:performance.now(),born:performance.now(),released:0,active:true,path:[],life:1,audio:null};addPoint(o,x,y);organisms.push(o);playingTouches.set(id,{o,x,y,t:performance.now()});retireOldest();createAudio(o);$('status').textContent='LIVE · '+organisms.length+' ORGANISM'+(organisms.length===1?'':'S')+(ctx?' · AUDIO '+ctx.state.toUpperCase():'');return o}
+function down(e){if(e.pointerType==='mouse'&&e.button!==0)return;e.preventDefault();unlockAudio();try{cv.setPointerCapture(e.pointerId)}catch(e){}const o=newOrganism(e.pointerId,e.clientX,e.clientY);updateAudio(o,performance.now(),true)}
+function move(e){const p=playingTouches.get(e.pointerId);if(!p)return;e.preventDefault();const now=performance.now(),dx=e.clientX-p.x,dy=e.clientY-p.y;if(Math.hypot(dx,dy)>5){addPoint(p.o,e.clientX,e.clientY);p.x=e.clientX;p.y=e.clientY;p.t=now;updateAudio(p.o,now)}}
+function up(e){const p=playingTouches.get(e.pointerId);if(!p)return;e.preventDefault();p.o.active=false;p.o.released=performance.now();playingTouches.delete(e.pointerId);$('status').textContent='LIVING · '+organisms.length+' ORGANISMS'}
+cv.addEventListener('pointerdown',down,{passive:false});cv.addEventListener('pointermove',move,{passive:false});for(const kind of ['pointerup','pointercancel','lostpointercapture'])cv.addEventListener(kind,up,{passive:false});
+function clearAll(){for(const o of organisms)destroy(o);organisms=[];playingTouches.clear();$('status').textContent='FIELD CLEARED · TOUCH TO CREATE'}
+$('clear').addEventListener('click',clearAll);
+$('freeze').addEventListener('click',()=>{
+ freezeOn=!freezeOn;const now=performance.now();
+ for(const o of organisms){if(freezeOn){o.frozenLife=o.life;o.freezeAt=now;}else if(o.freezeAt){o.released+=now-o.freezeAt;o.freezeAt=null;}}
+ $('freeze').classList.toggle('active',freezeOn);$('freeze').textContent=freezeOn?'❄ FROZEN':'❄ FREEZE';$('status').textContent=freezeOn?'FREEZE · ORGANISMS PRESERVED':'UNFROZEN · ORGANISMS EVOLVING';
+});
+$('replay').addEventListener('click',()=>{
+ const now=performance.now();if(!organisms.length){toast('DRAW AN ORGANISM FIRST');return}
+ for(const o of organisms){if(!o.active){o.released=now;o.born=now;o.life=1;if(freezeOn)o.freezeAt=now;}}
+ $('replay').classList.add('active');setTimeout(()=>$('replay').classList.remove('active'),430);$('status').textContent='REPLAY · ALL PATHS RESTARTED';
+});
+$('sound').addEventListener('click',()=>{muted=!muted;$('sound').textContent=muted?'SOUND OFF':'SOUND ON';$('sound').classList.toggle('active',muted);if(ctx&&bus)bus.gain.setTargetAtTime(muted?0:.55,ctx.currentTime,.035)});
+document.querySelectorAll('[data-mode]').forEach(el=>el.addEventListener('click',()=>{mode=el.dataset.mode;document.querySelectorAll('[data-mode]').forEach(b=>b.classList.toggle('active',b.dataset.mode===mode));$('status').textContent=mode.toUpperCase()+' · NEXT GESTURE USES THIS MODE';}));
+function downloadBlob(blob,type){const ext=type.includes('mp4')?'mp4':'webm';const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='touch-field-'+Date.now()+'.'+ext;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),30000)}
+function stopRecording(){if(!recording)return;recording=false;clearInterval(recTimer);recTimer=null;$('rec').classList.remove('recording');$('rec').innerHTML='● 30s<span id="timer"></span>';if(recorder&&recorder.state!=='inactive')recorder.stop()}
+$('rec').addEventListener('click',()=>{if(recording){stopRecording();return}if(!window.MediaRecorder||!cv.captureStream){toast('EXPORT VIDEO NOT SUPPORTED');return}if(!initAudio())return;ctx.resume();const stream=cv.captureStream(24),audioTracks=mediaDest.stream.getAudioTracks();for(const t of audioTracks)stream.addTrack(t);const kinds=['video/mp4','video/webm;codecs=vp9,opus','video/webm'];const mime=kinds.find(x=>MediaRecorder.isTypeSupported(x))||'';try{const chunks=[];recorder=new MediaRecorder(stream,{...(mime?{mimeType:mime}:{})});recorder.ondataavailable=e=>{if(e.data.size)chunks.push(e.data)};recorder.onstop=()=>{if(chunks.length)downloadBlob(new Blob(chunks,{type:mime||recorder.mimeType}),mime||recorder.mimeType);else toast('NO VIDEO RECORDED');stream.getTracks().forEach(t=>t.stop())};recorder.start(1000);recording=true;recordingStart=Date.now();$('rec').classList.add('recording');recTimer=setInterval(()=>{const sec=Math.floor((Date.now()-recordingStart)/1000);$('rec').textContent='■ '+(30-sec)+'s';if(sec>=30)stopRecording()},250);toast('CAPTURING 30s')}catch(e){toast('EXPORT NOT AVAILABLE ON THIS DEVICE')}});
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&recording)stopRecording()});
+function render(now){requestAnimationFrame(render);if(now-lastDraw<32)return;lastDraw=now;const t=now*.001;c.fillStyle='#04080c';c.fillRect(0,0,W,H);const gapX=W<450?10.5:12.5,gapY=15.5,chars=' .,:;-=+*#%@',profile=colors[mode],living=[];
+for(const o of organisms){if(!o.active){o.life=freezeOn?Math.max(.02,o.frozenLife||o.life):Math.max(0,1-(now-o.released)/(modes[o.mode].decay*1000));if(o.life<=.025){destroy(o);continue}}living.push(o);if(o.audio&&ctx&&ctx.state==='running')updateAudio(o,now)}organisms=living;
+const positions=organisms.map(o=>({o,p:sample(o,now),tint:colors[o.mode]}));
+c.font='11px Menlo,Monaco,monospace';c.textAlign='center';c.textBaseline='middle';
+for(let y=gapY*.5;y<H;y+=gapY){for(let x=gapX*.5;x<W;x+=gapX){
+let dx=0,dy=0,glow=0,hue=profile.h,sat=profile.s,rad=0;
+for(const item of positions){const px=item.p.x*W,py=item.p.y*H,rx=x-px,ry=y-py,d2=rx*rx+ry*ry+220,rr=Math.sqrt(d2),strength=Math.min(2,2700/d2)*item.o.life;
+dx+=(-ry/rr)*strength*18;dy+=(rx/rr)*strength*18;const local=Math.max(0,1-(rr-14)/115)*item.o.life;glow+=local*.35;
+if(local>rad){rad=local;hue=item.tint.h;sat=item.tint.s}}
+const wave=Math.sin((x+dx)*.018+t*.46)*Math.cos((y+dy)*.026-t*.38),detail=Math.sin(x*.061+y*.083+t*.65),v=.38+wave*.27+detail*.13+glow;
+if(v<.25)continue;const idx=clamp(Math.floor((v+.08)*chars.length*.78),1,chars.length-1),alpha=clamp(.18+v*.66,.14,.88);
+c.fillStyle='hsla('+hue+','+(sat+rad*24)+'%,'+(64+rad*19)+'%,'+alpha+')';c.fillText(chars[idx],x+dx,y+dy)}}
+for(const item of positions){const x=item.p.x*W,y=item.p.y*H,r=14+Math.sin(t*1.1+item.o.id)*7;c.beginPath();c.arc(x,y,r,0,Math.PI*2);c.strokeStyle='hsla('+item.tint.h+',55%,80%,'+(.11*item.o.life)+')';c.lineWidth=1;c.stroke()}
+if(organisms.length===0&&!playingTouches.size)$('status').textContent='READY · TOUCH TO DRAW AN ORGANISM'}
+requestAnimationFrame(render);
+})();
+</script></body></html>
