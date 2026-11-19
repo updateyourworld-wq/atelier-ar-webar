@@ -18,8 +18,8 @@ if(!c){$('status').textContent='CANVAS UNAVAILABLE';return}
 const clamp=(x,a=0,b=1)=>Math.max(a,Math.min(b,x));
 const colors={drift:{h:186,s:44},flow:{h:105,s:51},desire:{h:332,s:46},velvet:{h:263,s:48},abyss:{h:215,s:46}};
 const modes={
-drift:{root:174.61,scale:[0,2,5,7,9,12,14,17],wave:'sine',timbre:'triangle',decay:65,loop:8},
-flow:{root:220,scale:[0,2,3,5,7,10,12,15],wave:'triangle',timbre:'sine',decay:56,loop:6},
+drift:{root:146.83,scale:[0,2,5,7,9,12,14,17],wave:'sine',timbre:'sine',decay:95,loop:16},
+flow:{root:261.63,scale:[0,2,3,5,7,10,12,15],wave:'triangle',timbre:'triangle',decay:42,loop:3.5},
 desire:{root:130.81,scale:[0,3,5,7,10,12,15,19],wave:'sine',timbre:'triangle',decay:72,loop:10},
 velvet:{root:82.41,scale:[0,3,5,7,10,12,15,19],wave:'sawtooth',timbre:'triangle',decay:83,loop:12,cs80:true},
 abyss:{root:55,scale:[0,2,5,7,10,12,14,17],wave:'sawtooth',timbre:'sawtooth',decay:95,loop:15,cs80:true}
@@ -44,7 +44,7 @@ function noteFromX(nx,m){const scale=modes[m].scale;let ix=Math.min(scale.length
 function createAudio(o){if(!initAudio())return;if(ctx.state==='suspended')ctx.resume();const a=ctx.createOscillator(),b=ctx.createOscillator(),f=ctx.createBiquadFilter(),gain=ctx.createGain();const profile=modes[o.mode];a.type=profile.wave;b.type=profile.timbre;f.type='lowpass';f.Q.value=profile.cs80?1.15:.8;gain.gain.value=.0001;
 a.connect(f);b.connect(f);f.connect(gain);gain.connect(bus);a.start();b.start();
 let harmonic=null,harmonicGain=null;
-if(profile.cs80){harmonic=ctx.createOscillator();harmonicGain=ctx.createGain();harmonic.type='triangle';harmonicGain.gain.value=o.mode==='abyss'?.16:.11;harmonic.connect(harmonicGain);harmonicGain.connect(f);harmonic.start()}
+if(profile.cs80||o.mode==='flow'){harmonic=ctx.createOscillator();harmonicGain=ctx.createGain();harmonic.type=o.mode==='flow'?'sine':'triangle';harmonicGain.gain.value=o.mode==='flow'?.22:o.mode==='abyss'?.16:.11;harmonic.connect(harmonicGain);harmonicGain.connect(f);harmonic.start()}
 o.audio={a,b,f,gain,harmonic,harmonicGain};o.bornAudio=ctx.currentTime;updateAudio(o,performance.now(),true)}
 function updateAudio(o,now,first=false){if(!ctx||!o.audio)return;const p=sample(o,now),pr=modes[o.mode],nx=p.x,ny=p.y,cycle=(now-o.born)/1000/(pr.loop||8),swell=.73+.27*Math.sin(cycle*Math.PI*2),level=(.038+.11*o.life)*swell*(o.active?1:.82),fq=noteFromX(nx,o.mode),a=o.audio;
 a.a.frequency.setTargetAtTime(fq,ctx.currentTime,.085);
@@ -56,9 +56,22 @@ if(pr.cs80){
  a.f.frequency.setTargetAtTime(330+Math.pow(1-ny,1.7)*(o.mode==='abyss'?1550:2300)+lfo*120,ctx.currentTime,.13);
  // Mid harmonics keep sub-root notes audible on small phone speakers.
  a.gain.gain.setTargetAtTime(Math.max(.0001,level*.70),ctx.currentTime,first?.38:.22);
+}else if(o.mode==='drift'){
+ // DRIFT: near-pure, slowly breathing sustained tone with a barely beating unison.
+ a.b.frequency.setTargetAtTime(fq*1.003,ctx.currentTime,.19);
+ a.f.frequency.setTargetAtTime(620+Math.pow(1-ny,1.4)*1300,ctx.currentTime,.22);
+ const breath=.65+.35*Math.sin((now-o.born)*.001*Math.PI/7);
+ a.gain.gain.setTargetAtTime(Math.max(.0001,level*.64*breath),ctx.currentTime,first?.42:.25);
+}else if(o.mode==='flow'){
+ // FLOW: bright bell-like partial and patterned amplitude pulse; distinct from the drifting pad.
+ a.b.frequency.setTargetAtTime(fq*1.5,ctx.currentTime,.055);
+ if(a.harmonic)a.harmonic.frequency.setTargetAtTime(fq*3,ctx.currentTime,.07);
+ const pulse=.46+.54*Math.pow(Math.max(0,Math.sin((now-o.born)*.001*Math.PI*2*2.5)),3);
+ a.f.frequency.setTargetAtTime(1400+Math.pow(1-ny,1.1)*5200,ctx.currentTime,.065);
+ a.gain.gain.setTargetAtTime(Math.max(.0001,level*.76*pulse),ctx.currentTime,first?.12:.052);
 }else{
- a.b.frequency.setTargetAtTime(fq*(o.mode==='flow'?1.5:2)*(1+.003*Math.sin(cycle*6.28)),ctx.currentTime,.11);
- a.f.frequency.setTargetAtTime(520+Math.pow(1-ny,1.55)*(o.mode==='flow'?4800:2800),ctx.currentTime,.12);
+ a.b.frequency.setTargetAtTime(fq*2*(1+.003*Math.sin(cycle*6.28)),ctx.currentTime,.11);
+ a.f.frequency.setTargetAtTime(520+Math.pow(1-ny,1.55)*2800,ctx.currentTime,.12);
  a.gain.gain.setTargetAtTime(Math.max(.0001,level),ctx.currentTime,first?.32:.18);
 }}
 function destroy(o){if(!o.audio||!ctx)return;const t=ctx.currentTime;o.audio.gain.gain.setTargetAtTime(.00001,t,.14);for(const x of [o.audio.a,o.audio.b,o.audio.harmonic])if(x)try{x.stop(t+.85)}catch(e){}o.audio=null}
@@ -109,9 +122,13 @@ c.font='11px Menlo,Monaco,monospace';c.textAlign='center';c.textBaseline='middle
 for(let y=gapY*.5;y<H;y+=gapY){for(let x=gapX*.5;x<W;x+=gapX){
 let dx=0,dy=0,glow=0,hue=profile.h,sat=profile.s,rad=0;
 for(const item of positions){const px=item.p.x*W,py=item.p.y*H,rx=x-px,ry=y-py,d2=rx*rx+ry*ry+220,rr=Math.sqrt(d2),strength=Math.min(2,2700/d2)*item.o.life;
-dx+=(-ry/rr)*strength*18;dy+=(rx/rr)*strength*18;const local=Math.max(0,1-(rr-14)/115)*item.o.life;glow+=local*.35;
+dx+=(-ry/rr)*strength*(item.o.mode==='flow'?9:18);dy+=(rx/rr)*strength*(item.o.mode==='flow'?9:18);const local=Math.max(0,1-(rr-14)/115)*item.o.life;glow+=local*.35;
 if(local>rad){rad=local;hue=item.tint.h;sat=item.tint.s}}
-const wave=Math.sin((x+dx)*.018+t*.46)*Math.cos((y+dy)*.026-t*.38),detail=Math.sin(x*.061+y*.083+t*.65),v=.38+wave*.27+detail*.13+glow;
+const wave=mode==='flow'?
+ Math.sin((x+dx)*.055+t*1.65)*Math.cos((y+dy)*.07-t*1.35):
+ Math.sin((x+dx)*.018+t*(mode==='drift'?.20:.46))*Math.cos((y+dy)*.026-t*(mode==='drift'?.16:.38));
+const detail=mode==='flow'?Math.sin(x*.12-y*.10+t*2.9):Math.sin(x*.061+y*.083+t*.65);
+const v=.38+wave*(mode==='flow'?.34:.27)+detail*(mode==='flow'?.17:.13)+glow;
 if(v<.25)continue;const idx=clamp(Math.floor((v+.08)*chars.length*.78),1,chars.length-1),alpha=clamp(.18+v*.66,.14,.88);
 c.fillStyle='hsla('+hue+','+(sat+rad*24)+'%,'+(64+rad*19)+'%,'+alpha+')';c.fillText(chars[idx],x+dx,y+dy)}}
 for(const item of positions){const x=item.p.x*W,y=item.p.y*H,r=14+Math.sin(t*1.1+item.o.id)*7;c.beginPath();c.arc(x,y,r,0,Math.PI*2);c.strokeStyle='hsla('+item.tint.h+',55%,80%,'+(.11*item.o.life)+')';c.lineWidth=1;c.stroke()}
