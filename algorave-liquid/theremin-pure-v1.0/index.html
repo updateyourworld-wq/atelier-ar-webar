@@ -197,7 +197,15 @@ body.clean #dock:active{opacity:1}
 <button id="faceMusicToggle" type="button" aria-pressed="false">[ ] FACE MUSIC</button>
 <button id="faceWaveToggle" type="button" aria-pressed="true">[X] FACE WAVES</button>
 </div>
-<div id="airPosition">HAND: WAITING / FACE: WAITING</div><video id="faceVideo" autoplay muted playsinline webkit-playsinline hidden></video>
+<div id="airPosition">HAND: WAITING / FACE: WAITING</div>
+<div style="border:1px solid #bbb;padding:10px;margin-top:12px;background:#000;color:#fff;font:10px/1.7 Menlo,monospace">
+<div class="panelTitle">+-- THEREMIN / CALIBRATION --+</div>
+<div id="calStep">DEFAULT RANGE / OPTIONAL CALIBRATION</div>
+<button id="calCapture" type="button" style="width:100%;margin-top:8px">[ START CALIBRATION ]</button>
+<button id="calReset" type="button" style="width:100%;margin-top:6px">[ RESET RANGE ]</button>
+<div id="calReadout" style="margin-top:7px;color:#bbb"></div>
+<div style="color:#aaa">CAPTURE LOW AND HIGH FOR EACH HAND. SETTINGS STAY ON YOUR DEVICE.</div>
+</div><video id="faceVideo" autoplay muted playsinline webkit-playsinline hidden></video>
 </div>
 
 <div class="panelTitle" style="margin-top:18px">03 &gt; CHARACTER / WORLD</div><div id="modebar"><button data-mode="drift" class="active">DRIFT</button><button data-mode="flow">FLOW</button><button data-mode="desire">DESIRE</button><button data-mode="velvet">VELVET</button><button data-mode="abyss">ABYSS</button></div>
@@ -690,6 +698,24 @@ const button=document.getElementById('faceToggle'),status=document.getElementByI
 const handButton=document.getElementById('handToggle'),faceButton=document.getElementById('faceMusicToggle'),waveButton=document.getElementById('faceWaveToggle'),pos=document.getElementById('airPosition');
 let stream=null,faceTracker=null,handTracker=null,running=false,generation=0,frameHandle=0,lastFrame=0,lastVideoTime=-1,prevFace=null,prevHand=null,handPinched=false;
 let handEnabled=true,faceMusicEnabled=true,wavesEnabled=true;
+const calKey='theremin-pure-cal-v1',defaults={pitchLow:.85,pitchHigh:.15,volumeLow:.85,volumeHigh:.15};
+let cal={...defaults},step=-1,smoothedPitch=null,smoothedVolume=null,liveHands={right:null,left:null};
+try{const s=JSON.parse(localStorage.getItem(calKey)||'null');if(s&&Object.keys(defaults).every(k=>Number.isFinite(s[k])&&s[k]>=0&&s[k]<=1)&&s.pitchLow-s.pitchHigh>.12&&s.volumeLow-s.volumeHigh>.12)cal=s}catch(_){}
+const steps=[['pitchLow','right','1/4 RIGHT HAND LOW'],['pitchHigh','right','2/4 RIGHT HAND HIGH'],['volumeLow','left','3/4 LEFT HAND LOW'],['volumeHigh','left','4/4 LEFT HAND HIGH']];
+const capture=document.getElementById('calCapture'),reset=document.getElementById('calReset'),stepText=document.getElementById('calStep'),readCal=document.getElementById('calReadout');
+function showCal(){readCal.textContent='PITCH: '+cal.pitchLow.toFixed(2)+' / '+cal.pitchHigh.toFixed(2)+' | VOLUME: '+cal.volumeLow.toFixed(2)+' / '+cal.volumeHigh.toFixed(2)}
+function normalize(y,low,high){return Math.max(0,Math.min(1,(low-y)/(low-high)))}
+capture.addEventListener('click',()=>{
+ if(step<0){step=0;capture.textContent='[ CAPTURE ]';stepText.textContent=steps[0][2];return}
+ const [key,side]=steps[step],val=liveHands[side];
+ if(val==null){stepText.textContent='HAND NOT VISIBLE: '+steps[step][2];return}
+ if((key==='pitchHigh'&&cal.pitchLow-val<.12)||(key==='volumeHigh'&&cal.volumeLow-val<.12)){stepText.textContent='MOVE HAND HIGHER / RETRY';return}
+ cal[key]=val;step++;showCal();
+ if(step===4){step=-1;smoothedPitch=null;smoothedVolume=null;capture.textContent='[ RECALIBRATE ]';stepText.textContent='CALIBRATED / SAVED';try{localStorage.setItem(calKey,JSON.stringify(cal))}catch(_){}}
+ else stepText.textContent=steps[step][2]
+});
+reset.addEventListener('click',()=>{cal={...defaults};step=-1;smoothedPitch=null;smoothedVolume=null;capture.textContent='[ START CALIBRATION ]';stepText.textContent='DEFAULT RANGE';try{localStorage.removeItem(calKey)}catch(_){}showCal()});
+showCal();
 let lastPose='WAITING',poseCandidate='WAITING',poseFrames=0;
 const readHand=document.getElementById('handPoseRead'),readFace=document.getElementById('facePoseRead'),readAction=document.getElementById('gestureAction');
 const pd=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
@@ -729,7 +755,7 @@ function stop(){
  window.__faceWave={active:false,visible:false,x:.5,y:.5,tilt:0,mouth:0,speed:0,t:0};
  window.__airMusicStop?.();
  for(const tracker of [faceTracker,handTracker])if(tracker)try{tracker.close()}catch(_){}
- faceTracker=null;handTracker=null;prevFace=null;prevHand=null;handPinched=false;lastFrame=0;lastVideoTime=-1;
+ faceTracker=null;handTracker=null;prevFace=null;prevHand=null;handPinched=false;liveHands={right:null,left:null};smoothedPitch=null;smoothedVolume=null;lastFrame=0;lastVideoTime=-1;
  updateButtons();pos.textContent='HAND: WAITING / FACE: WAITING';lastPose='WAITING';poseCandidate='WAITING';poseFrames=0;updateReadout(null,null,'WAITING');message('CAMERA: OFF / VIDEO TRACKS STOPPED');
 }
 async function start(){
@@ -796,17 +822,23 @@ function loop(now){
    const allHands=handResult?.landmarks||[];
    const findHand=label=>{const i=handResult?.handedness?.findIndex(h=>h?.[0]?.categoryName===label)??-1;return i>=0?allHands[i]:null};
    const pitchHand=findHand('Right')||allHands[0]||null;
-   const volumeHand=findHand('Left')||allHands.find(h=>h!==pitchHand)||null;
+   const leftHand=findHand('Left');
+   const volumeHand=(leftHand!==pitchHand?leftHand:null)||allHands.find(h=>h!==pitchHand)||null;
+   liveHands={right:pitchHand?.length?pitchHand[8].y:null,left:volumeHand?.length?volumeHand[9].y:null};
    if(pitchHand?.length&&handEnabled){
     const tip=pitchHand[8],knuckle=pitchHand[5],pinky=pitchHand[17],x=1-tip.x,y=tip.y;
     const width=Math.max(.02,pd(knuckle,pinky)),depth=Math.max(.25,Math.min(1,width/.23));
     const speed=prevHand?Math.min(1,Math.hypot(x-prevHand.x,y-prevHand.y)*9):0;
-    const volume=volumeHand?.length?Math.max(0,Math.min(1,1-volumeHand[9].y)):.38;
-    window.__airMusic?.hand({x,y,speed,depth,volume});
+    const rawPitch=normalize(y,cal.pitchLow,cal.pitchHigh);
+    smoothedPitch=smoothedPitch==null?rawPitch:smoothedPitch+(rawPitch-smoothedPitch)*.35;
+    const rawVolume=volumeHand?.length?normalize(volumeHand[9].y,cal.volumeLow,cal.volumeHigh):.38;
+    smoothedVolume=smoothedVolume==null?rawVolume:smoothedVolume+(rawVolume-smoothedVolume)*.3;
+    const volume=smoothedVolume;
+    window.__airMusic?.hand({x,y:1-smoothedPitch,speed,depth,volume});
     if(prevHand){const dx=(x-prevHand.x)*innerWidth,dy=(y-prevHand.y)*innerHeight;window.__airGesture?.(x,y,dx,dy,speed)}
     prevHand={x,y};pose='OPEN PALM';
-    pos.textContent='PITCH '+Math.round(110*Math.pow(2,(1-y)*4))+' HZ / VOLUME '+Math.round(volume*100)+'% / FACE '+(face?'ON':'WAIT');
-   }else{window.__airMusic?.hand(null);prevHand=null;pose='WAITING';pos.textContent='PITCH HAND: WAITING / FACE: '+(face?'ON':'WAIT')}
+    pos.textContent='PITCH '+Math.round(110*Math.pow(2,smoothedPitch*4))+' HZ / VOLUME '+Math.round(volume*100)+'% / FACE '+(face?'ON':'WAIT');
+   }else{window.__airMusic?.hand(null);prevHand=null;smoothedPitch=null;smoothedVolume=null;pose='WAITING';pos.textContent='PITCH HAND: WAITING / FACE: '+(face?'ON':'WAIT')}
    updateReadout(handEnabled?pitchHand:null,face,pose);
   message('CAMERA: ON / LOCAL '+(handTracker?'FACE + HAND':'FACE ONLY')+' ANALYSIS');
  }catch(err){stop();message('TRACKING ERROR: '+String(err?.message||err).slice(0,90))}
