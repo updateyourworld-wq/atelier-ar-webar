@@ -1,0 +1,894 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1,user-scalable=no"><meta name="theme-color" content="#04080c">
+<title>THEREMIN PURE V1.2 — EXPRESSIVE</title>
+<style>
+:root{color-scheme:dark;--ink:#d6eeeb;--muted:#9eafb4;--accent:#a4d7e6}
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#04080c;color:var(--ink);font:11px ui-monospace,SFMono-Regular,Menlo,monospace;overscroll-behavior:none;-webkit-user-select:none;user-select:none}button{font:inherit;touch-action:manipulation;min-height:41px;background:#0b2029db;color:var(--ink);border:1px solid #50707b;border-radius:6px;padding:8px 10px}button.active{border-color:#bff4cf;background:#244237;color:#d9ffe7}button:disabled{opacity:.4}canvas{position:fixed;inset:0;width:100%;height:100dvh;display:block;touch-action:none}#ui{position:fixed;inset:0;pointer-events:none}#top{position:absolute;left:12px;right:12px;top:calc(10px + env(safe-area-inset-top));display:flex;justify-content:space-between;align-items:start;gap:8px}#brand{font-weight:800;font-size:12px;letter-spacing:.15em;text-shadow:0 1px 8px black}#subtitle{font-size:9px;color:#a1bcc4;margin-top:5px}#modebar{pointer-events:auto;display:flex;gap:4px;max-width:76vw;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}#modebar::-webkit-scrollbar{display:none}#modebar button{padding:8px 7px;font-size:9px;white-space:nowrap;flex:none}#top{align-items:flex-start}#brand{white-space:nowrap}#bottom{position:absolute;bottom:calc(13px + env(safe-area-inset-bottom));left:12px;right:12px;display:flex;align-items:end;justify-content:space-between;gap:10px}#instructions{font-size:10px;line-height:1.55;color:#b6cfce;max-width:58%;text-shadow:0 1px 8px black}#controls{pointer-events:auto;display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end;max-width:43%}#controls button{font-size:10px;padding:7px 9px}#startaudio{border-color:#a5efa1;background:#24432c}#startaudio.active{border-color:#a5efa1;background:#264c38;color:#d9ffc9}#freeze.active{color:#daf3ff;background:#25445e;border-color:#89ceee}#replay.active{color:#daffd6;background:#2b503a;border-color:#a1ffae}#testaudio{border-color:#bdffc0;background:#1e3d35;color:#d6ffda}#center{position:absolute;inset:0;display:grid;place-items:center;text-align:center;pointer-events:none;transition:opacity .6s}#center.hidden{opacity:0}#center div{font-size:clamp(15px,4vw,22px);letter-spacing:.11em;font-weight:700;line-height:1.7;text-shadow:0 2px 12px black}#center small{display:block;font-weight:400;letter-spacing:.05em;font-size:11px;color:#a3bcc1;margin-top:9px}#status{position:absolute;top:calc(63px + env(safe-area-inset-top));left:12px;font-size:9px;color:#a8d8db;text-shadow:0 1px 9px black;max-width:70%;line-height:1.6}#toast{position:absolute;top:27%;left:12%;right:12%;text-align:center;color:#d6f3e7;text-shadow:0 2px 10px black;font-size:13px;pointer-events:none;opacity:0;transition:opacity .2s}#toast.show{opacity:1}#rec{color:#ffa3a3}#timer{display:none}#rec.recording #timer{display:inline}@media(max-width:390px){#brand{font-size:10px}#modebar button{font-size:9px;padding:7px 5px}#controls button{padding:7px}#instructions{font-size:9px}}
+
+/* V3: near-invisible UI, retained controls in on-demand sheets */
+#ui{z-index:2}#top{top:calc(10px + env(safe-area-inset-top));left:12px;right:12px;align-items:center;pointer-events:none}
+#brand{font-size:10px;font-weight:700;letter-spacing:.13em;opacity:.56;transition:opacity .3s}#subtitle{display:none}
+#top #modebar{display:none}#modebar{max-width:none;overflow:visible;flex-direction:column;gap:7px;pointer-events:auto}
+#modebar button{height:42px;min-height:42px;padding:9px 14px;font-size:12px;text-align:left;background:#101e2af0}
+#modebar button.active{background:#2c4b3f;color:#d6ffe2}
+#status{top:calc(43px + env(safe-area-inset-top));left:12px;max-width:75vw;opacity:.38;font-size:8px;pointer-events:none}
+#center div{font-size:clamp(14px,4vw,20px);opacity:.76}#center small{color:#a6c2c8}
+#bottom{left:12px;right:12px;bottom:calc(13px + env(safe-area-inset-bottom));display:block}
+#instructions{position:absolute;bottom:3px;left:0;font-size:9px;line-height:1.4;opacity:.34;max-width:50%;transition:opacity .4s}
+#controls{display:grid;grid-template-columns:1fr 1fr;max-width:none;gap:8px;justify-content:stretch;flex-wrap:nowrap;pointer-events:auto}
+#controls button{min-height:43px;padding:9px;font-size:11px}
+#controls #rec{grid-column:span 2}
+#sound{display:none}
+#dock{position:absolute;right:0;bottom:0;display:flex;gap:7px;pointer-events:auto;z-index:10}
+#dock button{border:1px solid #7d98a05e;min-width:45px;min-height:45px;border-radius:13px;background:#091921ad;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);font-size:15px}
+#dock button[data-active="true"]{border-color:#b6f4c1;color:#d7ffe3}
+#drawer,#modeSheet{position:absolute;z-index:11;pointer-events:auto;background:#091620ed;border:1px solid #5269758a;box-shadow:0 20px 80px #0009;backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px);border-radius:16px;overflow:hidden}
+#drawer{bottom:calc(73px + env(safe-area-inset-bottom));right:12px;width:min(285px,calc(100vw - 24px));padding:14px}
+#modeSheet{top:calc(61px + env(safe-area-inset-top));right:12px;padding:9px;width:min(205px,calc(100vw - 24px))}
+#drawer[hidden],#modeSheet[hidden]{display:none!important}
+.panelTitle{font-size:10px;color:#9fbcc4;letter-spacing:.16em;margin:0 0 13px}
+#drawer #sound{display:block}
+#drawer #controls #startaudio{grid-column:span 2}
+#modeButton{font-size:10px!important;min-width:96px!important;letter-spacing:.06em}
+#rec.recording{color:#ffc8cb;border-color:#ffacb9}
+#drawer .quietHelp{font-size:9px;line-height:1.6;color:#a5b9c2;margin-top:12px}
+body.clean #brand,body.clean #status,body.clean #instructions{opacity:0}
+body.clean #dock{opacity:.25;transition:opacity .25s}
+body.clean #dock:active{opacity:1}
+@media(max-width:390px){#drawer{width:min(265px,calc(100vw - 24px))}}
+#engineSelector{margin:8px 0 15px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+#engineSelector button{min-height:39px;font-size:10px;background:#112532df;color:#b9d5d7;text-align:left;padding:9px 10px;border-radius:7px}
+#engineSelector button.active{background:#284b43;border-color:#baf0bc;color:#e0ffdd}
+#engineDetail{font-size:9px;line-height:1.5;color:#a4bac0;margin:-3px 0 12px}
+#drawer{max-height:min(76dvh,650px);overflow-y:auto}
+#engineNow{font-size:9px;color:#b5d9d5;letter-spacing:.07em;margin-bottom:5px}
+
+/* V3.2: one accessible scrollable control center, one floating menu toggle. */
+#dock{right:0;bottom:0}
+#dock #toolsButton{width:49px;height:49px;border-radius:50%;font-size:20px;background:#0b1d29b8;border:1px solid #86a6ae73}
+#drawer{position:absolute;z-index:12;pointer-events:auto;right:10px;bottom:calc(74px + env(safe-area-inset-bottom));top:auto;width:min(340px,calc(100vw - 20px));max-height:min(79dvh,700px);overflow-y:auto;overscroll-behavior:contain;padding:16px 15px;border-radius:17px;scrollbar-width:thin}
+#drawer[hidden]{display:none!important}
+#drawer #modebar{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;max-width:none;overflow:visible}
+#drawer #modebar button{min-height:39px;height:39px;font-size:10px;text-align:center;padding:7px 3px;border-radius:7px}
+#drawer #engineSelector{grid-template-columns:repeat(2,minmax(0,1fr));margin:0 0 10px}
+#drawer .panelTitle{font-size:10px;margin-bottom:10px;color:#c0d7db}
+#drawer .drawer-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:15px}
+#drawer .drawer-head .panelTitle{margin:0}
+#closeDrawer{min-width:40px;min-height:39px;padding:7px;background:#172b35}
+#drawer #controls{display:grid;grid-template-columns:1fr 1fr;max-width:none}
+#drawer #controls #sound{display:block}
+#drawer #controls #startaudio{grid-column:auto}
+#drawer #controls #rec{grid-column:span 2}
+#drawer .quietHelp{font-size:9px;margin-top:12px}
+@media(max-width:390px){#drawer{width:calc(100vw - 20px)}#drawer #modebar button{font-size:9px}}
+
+/* V3.5: dedicated ASCII terminal UI, preserving the V3.4 audiovisual engine. */
+#ui{font-family:Menlo,Monaco,"Courier New",monospace}
+#top{top:calc(12px + env(safe-area-inset-top))}
+#brand{font-size:clamp(10px,2.8vw,13px);letter-spacing:.07em;color:#d1f5bb;opacity:.88;font-weight:700}
+#engineNow{font-size:9px;color:#9bc7c0;letter-spacing:.1em;margin-top:5px}
+#status{top:calc(74px + env(safe-area-inset-top));opacity:.48;color:#b1d1cd;font-size:9px}
+#center div{font-family:Menlo,Monaco,monospace;opacity:.75;font-size:clamp(11px,3vw,16px);font-weight:400;letter-spacing:0}
+#center .boot{display:block;white-space:nowrap;line-height:1.45;color:#b0d6c7}
+#center small{font-size:10px;color:#99bcb6;line-height:1.85;margin-top:14px}
+#instructions{font:9px/1.6 Menlo,monospace;color:#9fc9bf;opacity:.75;max-width:calc(100% - 70px)}
+#instructions .signal{color:#c7eaa7;letter-spacing:.035em}
+#dock #toolsButton{min-width:52px;width:52px;height:50px;min-height:50px;border-radius:3px;background:#071a23db;color:#d6f5cf;border:1px solid #91bbb0;font:bold 16px Menlo,monospace;box-shadow:none}
+#dock #toolsButton[data-active=true]{background:#204036;border-color:#cbf0a4}
+#drawer{top:calc(10px + env(safe-area-inset-top));right:10px;bottom:calc(10px + env(safe-area-inset-bottom));width:min(365px,calc(100vw - 20px));max-height:none;padding:15px 13px;border-radius:3px;background:#07121af5;border:1px solid #6e9d97;box-shadow:0 16px 50px #000b;overflow-y:auto;overscroll-behavior:contain}
+#drawer[hidden]{display:none!important}
+#drawer .drawer-head{margin-bottom:18px;border-bottom:1px dashed #42615c;padding-bottom:10px}
+#drawer .panelTitle{font:700 10px Menlo,monospace;letter-spacing:.035em;color:#d5edc2;margin-bottom:11px}
+#closeDrawer{min-width:43px;min-height:41px;background:#0d222a;border:1px solid #547a78;border-radius:2px;color:#cdeac9;padding:7px}
+#drawer #modebar{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;max-width:none}
+#drawer #modebar button,#drawer #engineSelector button,#drawer #controls button{min-height:43px;height:auto;border:1px solid #3a5d59;border-radius:2px;background:#0d2028;color:#b9d5ce;font:10px Menlo,monospace;padding:9px 7px;white-space:normal}
+#drawer #modebar button{text-align:center}
+#drawer #modebar button:before,#drawer #engineSelector button:before{content:"[ ] ";color:#81aaa2}
+#drawer #modebar button.active,#drawer #engineSelector button.active,#drawer #controls button.active{border-color:#b7f2a4;background:#1c3a2d;color:#e2ffd5}
+#drawer #modebar button.active:before,#drawer #engineSelector button.active:before{content:"[X] ";color:#d6ffbb}
+#drawer #engineSelector{gap:7px}
+#engineDetail{font-size:9px;line-height:1.5;color:#8bb9b0;border-left:2px solid #638a7f;padding-left:10px;margin:0 0 18px}
+#drawer #controls{gap:7px}
+#drawer #controls button{text-align:center}
+#drawer #controls #rec{grid-column:span 2;color:#eeb5bd;border-color:#8b6169}
+#drawer #controls #startaudio{color:#d5f6b0;border-color:#8abb83}
+#drawer .quietHelp{font:9px/1.8 Menlo,monospace;color:#8daea6;border-top:1px dashed #375751;padding-top:12px}
+#drawer .quietHelp span{color:#cbe9bc}
+#toast{font:11px Menlo,monospace}
+@media(max-width:360px){#drawer{padding:12px 10px}#drawer #modebar button,#drawer #engineSelector button{font-size:9px}}
+
+/* Three master dimensions in the same ASCII console. */
+#masterSection{padding:7px 0 15px;border-bottom:1px dashed #36534f;margin-bottom:15px}
+#masterSection .masterRow{display:grid;grid-template-columns:57px minmax(0,1fr) 39px;gap:10px;align-items:center;font:10px Menlo,monospace;color:#c4e2d4;min-height:44px}
+#masterSection .masterRow output{text-align:right;color:#d8fac1;font:10px Menlo,monospace;font-variant-numeric:tabular-nums}
+#masterSection input[type=range]{width:100%;min-width:0;accent-color:#baf3aa;touch-action:pan-y;height:31px;appearance:none;-webkit-appearance:none;background:transparent}
+#masterSection input[type=range]::-webkit-slider-runnable-track{height:5px;border:1px solid #607d73;background:repeating-linear-gradient(90deg,#456559 0 4px,#18352e 4px 9px);border-radius:0}
+#masterSection input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:17px;height:23px;margin-top:-10px;border:1px solid #d6fac5;background:#86a996;border-radius:1px}
+#masterSection .masterHint{font:9px/1.5 Menlo,monospace;color:#8eaaa1;padding-top:4px}
+
+#facePanel{padding:4px 0 16px;border-bottom:1px dashed #35534b}
+#faceToggle{width:100%;height:46px;min-height:46px;text-align:center;font:11px Menlo,monospace;background:#10292a;border:1px solid #8cae98;border-radius:2px;color:#d1f8bb}
+#faceToggle[aria-pressed=true]{background:#203c31;border-color:#c3f6a8}
+#faceStatus{font:10px/1.6 Menlo,monospace;color:#c6ddc7;margin:9px 0}
+#facePanel .faceInfo{font:9px/1.6 Menlo,monospace;color:#88aca2}
+#faceVideo{display:none!important}
+
+#airButtons{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:13px}
+#airButtons button{font:10px Menlo,monospace;padding:8px;min-height:42px;color:#bcd6c8;background:#10232b;border:1px solid #4d7770;border-radius:2px}
+#airButtons button[aria-pressed=true]{border-color:#baf4b2;color:#e0ffca;background:#1a382e}
+#airButtons #faceWaveToggle{grid-column:span 2}
+#airPosition{font:9px Menlo,monospace;color:#acd5bd;margin:9px 0 0}
+#gestureManual,#gestureFX{border-top:1px dashed #58796a;margin-top:17px;padding-top:15px}
+.gestureLive{border:1px solid #719581;padding:10px;background:#0d292b;color:#c0e1d0;font:10px/1.8 Menlo,monospace;margin:9px 0}
+.gestureLive b{display:block;color:#ddf8bc}.gestureLive div{display:flex;justify-content:space-between;gap:8px}
+.gestureLive strong{color:#d6fbb8;text-align:right}.gestureLive p{margin:5px 0 0;border-top:1px dashed #42685e;padding-top:5px}
+.gestureGrid{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.gestureCard{border:1px solid #42675e;background:#10252d;min-height:110px;padding:9px 7px}
+.gestureCard.active{background:#224333;border-color:#d0faac}
+.gestureCard pre{font:18px/1.2 Menlo,monospace;color:#c5eeb6;margin:5px 0 10px;text-align:center}
+.gestureCard b{font:700 9px Menlo,monospace;display:block;color:#e2f8c3}
+.gestureCard small{font:9px/1.4 Menlo,monospace;display:block;margin-top:5px;color:#9ac0b9}
+.gestureNote{font:9px/1.6 Menlo,monospace;color:#92b9aa}
+.fxRow{display:grid;grid-template-columns:55px minmax(0,1fr) 38px;align-items:center;gap:9px;font:10px Menlo,monospace;min-height:46px}
+.fxRow input{width:100%;min-width:0;accent-color:#b9f5ad}.fxRow output{text-align:right;color:#d5f8b9}
+
+/* MONO / TERM: all UI is 1-bit inspired black-and-white. Canvas palettes untouched. */
+:root{color-scheme:dark;--ink:#f5f5f5;--muted:#aaa;--accent:#fff;--terminal-font:"Courier New",Courier,ui-monospace,monospace}
+#ui,#ui *{font-family:var(--terminal-font)!important;text-shadow:none!important;letter-spacing:.015em}
+#ui{color:#fff}
+#drawer{background:#000f!important;color:#fff!important;border:2px solid #fff!important;border-radius:0!important;box-shadow:8px 8px 0 #000!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+#drawer .drawer-head{border-bottom:1px dashed #fff!important;padding-bottom:10px}
+#drawer .panelTitle,#drawer .drawer-head .panelTitle{color:#fff!important;font-weight:700!important;letter-spacing:.06em!important}
+#drawer button,#drawer #modebar button,#drawer #engineSelector button,#drawer #controls button,#drawer #airButtons button,#drawer #faceToggle,#drawer #closeDrawer{background:#000!important;color:#fff!important;border:1px solid #cfcfcf!important;border-radius:0!important;box-shadow:none!important;font-weight:700!important}
+#drawer #modebar button.active,#drawer #engineSelector button.active,#drawer #controls button.active,#drawer #airButtons button[aria-pressed=true],#drawer #faceToggle[aria-pressed=true]{background:#fff!important;color:#000!important;border-color:#fff!important}
+#drawer #modebar button.active::before,#drawer #engineSelector button.active::before{color:#000!important}
+#drawer #modebar button:not(.active)::before,#drawer #engineSelector button:not(.active)::before{color:#fff!important}
+#drawer button:focus-visible,#dock button:focus-visible,#drawer input:focus-visible{outline:2px dashed #fff!important;outline-offset:3px}
+#drawer button:active{filter:invert(1)}
+#drawer #closeDrawer{min-height:44px!important;min-width:44px!important}
+#drawer #modebar button,#drawer #engineSelector button,#drawer #controls button{min-height:43px}
+#drawer .quietHelp,#drawer .quietHelp span,#drawer #engineDetail,#drawer .faceInfo,#drawer #faceStatus,#drawer #airPosition,#drawer .gestureNote,#drawer .masterHint,#drawer #masterSection .masterHint{color:#bcbcbc!important}
+#drawer #engineDetail{border-left:2px solid #fff!important}
+#drawer #sysInfo{color:#aaa!important;border-color:#555!important}
+#drawer #masterSection,#drawer #gestureManual,#drawer #gestureFX{border-color:#777!important}
+#drawer .masterRow,#drawer .fxRow,#drawer label,#drawer span,#drawer output,#drawer .masterRow output,#drawer .fxRow output{color:#fff!important}
+#drawer input[type=range]{accent-color:#fff!important}
+#drawer input[type=range]::-webkit-slider-runnable-track{background:repeating-linear-gradient(90deg,#777 0 4px,#222 4px 9px)!important;border:1px solid #fff!important}
+#drawer input[type=range]::-webkit-slider-thumb{background:#fff!important;border:1px solid #000!important;border-radius:0!important}
+#drawer input[type=range]::-moz-range-track{background:#555!important;border:1px solid #fff!important}
+#drawer input[type=range]::-moz-range-thumb{background:#fff!important;border:1px solid #000!important;border-radius:0!important}
+#drawer #facePanel,#drawer #faceToggle,#drawer #airButtons button{border-color:#ccc!important}
+#drawer .gestureLive,#drawer .gestureCard{background:#000!important;color:#fff!important;border:1px solid #777!important}
+#drawer .gestureLive b,#drawer .gestureLive strong,#drawer .gestureLive p,#drawer .gestureCard b,#drawer .gestureCard pre,#drawer .gestureCard small{color:#fff!important}
+#drawer .gestureCard.active{background:#fff!important;border-color:#fff!important}
+#drawer .gestureCard.active b,#drawer .gestureCard.active pre,#drawer .gestureCard.active small{color:#000!important}
+#drawer .gestureLive p{border-color:#777!important}
+#drawer .detectedNow{background:#000!important;color:#fff!important;border:1px solid #fff!important}
+#drawer .detectedNow strong,#drawer .detectedNow b{color:#fff!important}
+#drawer .detectedNow p{border-color:#777!important}
+#dock #toolsButton{background:#000e!important;color:#fff!important;border:2px solid #fff!important;border-radius:0!important;box-shadow:none!important}
+#dock #toolsButton[data-active=true]{background:#fff!important;color:#000!important}
+#top #brand,#top #engineNow,#top #subtitle,#status,#instructions,#instructions .signal,#signalBars,#voiceCount,#toast,#center,#center small,#center .boot{color:#fff!important}
+#top #brand{opacity:.68!important}
+#top #engineNow{opacity:.6}
+#status{opacity:.46!important}
+#instructions{opacity:.68!important}
+#center div{opacity:.67}
+#center .boot{color:#fff!important}
+#ui .recording{border-color:#fff!important;color:#fff!important;outline:1px dashed #fff}
+@media (max-width:390px){#drawer{width:calc(100vw - 20px)!important}}
+#drawer .startupNote{border:1px dashed #888;background:#000;color:#eee;padding:8px;font:10px/1.5 "Courier New",monospace;margin-bottom:10px}#drawer #controls{margin-bottom:6px}#drawer #gestureManual,#drawer #gestureFX{scroll-margin-top:24px}</style></head><body>
+<canvas id="field" aria-label="Champ ASCII tactile"></canvas><div id="ui">
+<div id="top"><div><div id="brand">[ THEREMIN / PURE ] v1.2</div><div id="engineNow">&gt; PAD / DRIFT</div><div id="subtitle">IMMERSIVE ASCII EXPERIENCE</div></div></div>
+<div id="status">READY · TOUCH TO DRAW AN ORGANISM</div>
+<div id="center"><div><span class="boot">+--------------------------+<br>| &nbsp; DRAW THE SOUND &nbsp; |<br>+--------------------------+</span><small>&gt; TOUCH TO CREATE<br>&gt; RELEASE TO LET IT LIVE</small></div></div>
+<div id="toast"></div>
+<div id="bottom"><div id="instructions">&gt; DRAW / RELEASE / LOOP<br><span class="signal">[<span id="signalBars">..........</span>] <span id="voiceCount">00</span> OBJECTS</span></div><div id="dock"><button type="button" id="toolsButton" aria-label="Ouvrir le menu principal" aria-expanded="false">[≡]</button></div></div>
+<div id="drawer" hidden><div class="drawer-head"><div class="panelTitle">+-- FIELD / TERMINAL --+</div><button id="closeDrawer" aria-label="Fermer le menu">[X]</button></div>
+<div class="panelTitle">01 &gt; START / AUDIO</div><div class="startupNote">[STEP 1] START AUDIO. [STEP 2] ENABLE CAMERA. TWO HANDS + FACE.</div>
+<div id="controls"><button id="startaudio">▶ AUDIO</button><button id="freeze">❄ FREEZE</button><button id="replay">↻ REPLAY</button><button id="clear">CLEAR</button><button id="sound">SOUND ON</button><button id="rec">● 30s<span id="timer"></span></button></div>
+<div class="panelTitle" style="margin-top:18px">02 &gt; CAMERA / ENABLE</div>
+<div id="facePanel">
+<button id="faceToggle" type="button" aria-pressed="false">[ ] ENABLE FRONT CAMERA</button>
+<div id="faceStatus" role="status">CAMERA: OFF / LOCAL PROCESSING</div>
+<div class="faceInfo">&gt; CAMERA PROCESSING: ON DEVICE<br>&gt; RIGHT HAND HEIGHT = CONTINUOUS PITCH<br>&gt; LEFT HAND HEIGHT = CONTINUOUS VOLUME<br>&gt; ONE HAND = PITCH + DEFAULT VOLUME<br>&gt; MOUTH OPEN = TIMBRE + VIBRATO<br>&gt; HEAD LEFT/RIGHT = STEREO PAN<br>&gt; NO PINCH REQUIRED</div>
+<div id="airButtons">
+<button id="handToggle" type="button" aria-pressed="true">[X] HAND MUSIC</button>
+<button id="faceMusicToggle" type="button" aria-pressed="false">[ ] FACE MUSIC</button>
+<button id="faceWaveToggle" type="button" aria-pressed="true">[X] FACE WAVES</button>
+</div>
+<div id="airPosition">HAND: WAITING / FACE: WAITING</div>
+<div style="border:1px solid #bbb;padding:10px;margin-top:12px;background:#000;color:#fff;font:10px/1.7 Menlo,monospace">
+<div class="panelTitle">+-- THEREMIN / CALIBRATION --+</div>
+<div id="calStep">DEFAULT RANGE / OPTIONAL CALIBRATION</div>
+<button id="calCapture" type="button" style="width:100%;margin-top:8px">[ START CALIBRATION ]</button>
+<button id="calReset" type="button" style="width:100%;margin-top:6px">[ RESET RANGE ]</button>
+<div id="calReadout" style="margin-top:7px;color:#bbb"></div>
+<div style="color:#aaa">CAPTURE LOW AND HIGH FOR EACH HAND. SETTINGS STAY ON YOUR DEVICE.</div>
+</div><video id="faceVideo" autoplay muted playsinline webkit-playsinline hidden></video>
+</div>
+
+<div class="panelTitle" style="margin-top:18px">03 &gt; CHARACTER / WORLD</div><div id="modebar"><button data-mode="drift" class="active">DRIFT</button><button data-mode="flow">FLOW</button><button data-mode="desire">DESIRE</button><button data-mode="velvet">VELVET</button><button data-mode="abyss">ABYSS</button></div>
+
+<div class="panelTitle" style="margin-top:18px">04 &gt; AUDIO / ENGINE</div><div id="engineSelector">
+<button data-engine="pad" class="active">PAD · ORIGINAL</button>
+<button data-engine="nebula">NEBULA</button>
+<button data-engine="prism">PRISM</button>
+<button data-engine="resonance">RESONANCE</button>
+<button data-engine="drone">DRONE</button>
+<button data-engine="cs80">CS-80 STYLE</button>
+<button data-engine="gong">GONG BATH</button>
+</div><div id="engineDetail">Soft pads · two oscillators</div>
+<div class="panelTitle" style="margin-top:18px">05 &gt; MASTER / STEREO AMBIENCE</div><div id="masterSection">
+<label class="masterRow"><span>LEVEL</span><input id="masterLevel" type="range" min="0" max="100" value="65"><output id="masterLevelRead">65%</output></label>
+<label class="masterRow"><span>WIDTH</span><input id="masterWidth" type="range" min="0" max="100" value="65"><output id="masterWidthRead">65%</output></label>
+<label class="masterRow"><span>SPACE</span><input id="masterSpace" type="range" min="0" max="100" value="35"><output id="masterSpaceRead">35%</output></label>
+<div class="masterHint">LEVEL = GLOBAL GAIN / WIDTH = VOICE SPREAD / SPACE = AMBIENT ECHO</div>
+</div>
+
+<div id="gestureManual"><div class="panelTitle">06 &gt; GESTURE / MANUAL</div><div class="gestureLive"><b>+-- DETECTED NOW --+</b><div>HAND: <strong id="handPoseRead">WAITING</strong></div><div>FACE: <strong id="facePoseRead">WAITING</strong></div><p id="gestureAction">CAMERA OFF</p></div><div class="gestureGrid"><div class="gestureCard" data-pose="OPEN PALM"><pre>| | | |</pre><b>OPEN PALM</b><small>ASCII WAVES</small></div><div class="gestureCard" data-pose="FIST"><pre>[####]</pre><b>FIST</b><small>HAND QUIET</small></div><div class="gestureCard" data-pose="FINGERS TOGETHER"><pre>||||</pre><b>FINGERS TOGETHER</b><small>PRECISE WAVES</small></div><div class="gestureCard" data-pose="FINGERS SPREAD"><pre>\ | /</pre><b>FINGERS SPREAD</b><small>WIDE WAVES</small></div><div class="gestureCard" data-pose="PINCH"><pre>(&gt; &lt;)</pre><b>PINCH</b><small>NOT REQUIRED</small></div><div class="gestureCard" data-pose="FACE LEFT"><pre>&lt; (o_o)</pre><b>FACE LEFT</b><small>PAN LEFT</small></div><div class="gestureCard" data-pose="FACE RIGHT"><pre>(o_o) &gt;</pre><b>FACE RIGHT</b><small>PAN RIGHT</small></div><div class="gestureCard" data-pose="MOUTH OPEN"><pre>(O)</pre><b>MOUTH OPEN</b><small>TIMBRE / VIBRATO</small></div><div class="gestureCard" data-pose="HEAD TILT"><pre>/ (o_o)</pre><b>HEAD TILT</b><small>WAVE DIRECTION</small></div></div><p class="gestureNote">POSES ARE ESTIMATES / FACE MUSIC IS OPTIONAL</p></div><div id="gestureFX"><div class="panelTitle">07 &gt; MOVEMENT / FX</div><label class="fxRow">DELAY<input id="gestureDelay" type="range" min="0" max="100" value="32"><output id="gestureDelayRead">32%</output></label><label class="fxRow">REVERB<input id="gestureReverb" type="range" min="0" max="100" value="38"><output id="gestureReverbRead">38%</output></label><p class="gestureNote">MOVEMENT = DELAY / MOUTH = TIMBRE + VIBRATO / HRTF SPATIAL AUDIO</p></div>
+<div id="expressivePanel" style="border:1px solid #999;padding:10px;margin:16px 0;background:#000;color:#fff">
+<div class="panelTitle">08 &gt; FACE / EXPRESSIVE MODE</div>
+<button id="expressiveToggle" type="button" aria-pressed="true" style="width:100%;margin:6px 0 10px">[X] EXPRESSIVE MODE</button>
+<label class="fxRow">VIBRATO<input id="expressiveVibrato" type="range" min="0" max="100" value="35"><output id="expressiveVibratoRead">35%</output></label>
+<label class="fxRow">TREMOLO<input id="expressiveTremolo" type="range" min="0" max="100" value="30"><output id="expressiveTremoloRead">30%</output></label>
+<label class="fxRow">TIMBRE<input id="expressiveTimbre" type="range" min="0" max="100" value="65"><output id="expressiveTimbreRead">65%</output></label>
+<p class="gestureNote">FACE MOTION = VIBRATO / HEAD TILT = TREMOLO / MOUTH OPEN = FILTER BRIGHTNESS. HAND CALIBRATION UNCHANGED.</p>
+</div><div class="quietHelp">&gt; SELECT A CHARACTER WORLD AND SOUND ENGINE.<br>&gt; DRAW TO GENERATE SOUND.<br>&gt; CLOSE MENU TO EXPLORE.<br><span>WEB AUDIO / ORIGINAL SYNTHESIS</span></div></div>
+</div>
+<script>
+(()=>{'use strict';
+const $=id=>document.getElementById(id),cv=$('field'),c=cv.getContext('2d',{alpha:false});
+function updateTerminalSignal(){
+ const count=Math.min(99,organisms.length);
+ $('voiceCount').textContent=String(count).padStart(2,'0');
+ const e=Math.max(spectrum.rms*3,spectrum.bass*1.8);
+ const n=Math.max(0,Math.min(10,Math.round(e*10)));
+ $('signalBars').textContent='#'.repeat(n)+'.'.repeat(10-n);
+}
+
+function setMasterValue(type,raw){
+ const value=clamp(Number(raw)/100);
+ if(type==='level')masterLevel=value;
+ if(type==='width')masterWidth=value;
+ if(type==='space')masterSpace=value;
+ const id=type==='level'?'masterLevelRead':type==='width'?'masterWidthRead':'masterSpaceRead';
+ $(id).textContent=Math.round(value*100)+'%';
+ if(!ctx)return;
+ const t=ctx.currentTime;
+ if(type==='level'&&bus)bus.gain.setTargetAtTime(muted?0:masterLevel,t,.045);
+ if(type==='space'){
+  if(roomGain)roomGain.gain.setTargetAtTime(.05+masterSpace*.38,t,.09);
+  if(feedback)feedback.gain.setTargetAtTime(.09+masterSpace*.24,t,.09);
+  if(room)room.delayTime.setTargetAtTime(.19+masterSpace*.35,t,.12);
+ }
+ if(type==='width')for(const o of organisms){if(o.audio?.stereo?.pan){const p=sample(o,performance.now());o.audio.stereo.pan.setTargetAtTime(clamp((p.x*2-1)*masterWidth,-1,1),t,.09)}}
+}
+for(const [slider,type] of [['masterLevel','level'],['masterWidth','width'],['masterSpace','space']])$(slider).addEventListener('input',e=>setMasterValue(type,e.target.value));
+// Live tracking state is updated by an optional camera module. It never needs the audio engine.
+window.__faceWave={active:false,visible:false,x:.5,y:.5,tilt:0,mouth:0,speed:0,t:0};
+const GESTURE_BOOST=1.10;
+let airVoice=null,faceVoice=null,gestureFX=null,delayAmount=.32,reverbAmount=.38;
+function createGestureFX(){
+ if(gestureFX||!ctx)return gestureFX;
+ const delay=ctx.createDelay(1.5),feedback=ctx.createGain(),lowpass=ctx.createBiquadFilter(),delayOut=ctx.createGain();
+ delay.delayTime.value=.30;feedback.gain.value=.20;lowpass.type='lowpass';lowpass.frequency.value=3200;delayOut.gain.value=.55;
+ delay.connect(lowpass);lowpass.connect(feedback);feedback.connect(delay);delay.connect(delayOut);delayOut.connect(bus);
+ const verb=ctx.createConvolver(),verbOut=ctx.createGain();
+ const samples=Math.round(ctx.sampleRate*1.35),buffer=ctx.createBuffer(2,samples,ctx.sampleRate);
+ for(let ch=0;ch<2;ch++){const data=buffer.getChannelData(ch);for(let i=0;i<samples;i++)data[i]=(Math.random()*2-1)*Math.pow(1-i/samples,2.7)}
+ verb.buffer=buffer;verbOut.gain.value=.25;verb.connect(verbOut);verbOut.connect(bus);
+ gestureFX={delay,verb};return gestureFX;
+}
+function connectGestureSends(p){
+ const fx=createGestureFX(),delaySend=ctx.createGain(),reverbSend=ctx.createGain();
+ delaySend.gain.value=0;reverbSend.gain.value=0;p.connect(delaySend);p.connect(reverbSend);
+ delaySend.connect(fx.delay);reverbSend.connect(fx.verb);return {delaySend,reverbSend};
+}
+function updateGestureSends(v,type,activity){
+ if(!ctx||!v)return;const t=ctx.currentTime,a=clamp(activity,0,1);
+ v.delaySend.gain.setTargetAtTime(Math.min(.95,delayAmount*GESTURE_BOOST*(type==='hand'?.18+a*.72:.1+a*.35)),t,.13);
+ v.reverbSend.gain.setTargetAtTime(Math.min(.95,reverbAmount*GESTURE_BOOST*(type==='hand'?.20+a*.35:.15+a*.80)),t,.19);
+}
+for(const [id,type] of [['gestureDelay','delay'],['gestureReverb','reverb']]){
+ document.getElementById(id).addEventListener('input',e=>{
+  const v=Number(e.target.value)/100;
+  if(type==='delay')delayAmount=v;else reverbAmount=v;
+  document.getElementById(id+'Read').textContent=Math.round(v*100)+'%';
+ });
+}
+
+function stopAirVoices(){
+ if(!ctx)return;
+ const t=ctx.currentTime;
+ if(airVoice){airVoice.delaySend.gain.setTargetAtTime(0,t,.03);airVoice.reverbSend.gain.setTargetAtTime(0,t,.03);airVoice.g.gain.setTargetAtTime(0,t,.04);try{airVoice.a.stop(t+.45);airVoice.b.stop(t+.45);airVoice.vibratoOsc?.stop(t+.45);airVoice.tremoloOsc?.stop(t+.45)}catch(e){}airVoice=null}
+ if(faceVoice){faceVoice.delaySend.gain.setTargetAtTime(0,t,.03);faceVoice.reverbSend.gain.setTargetAtTime(0,t,.03);faceVoice.g.gain.setTargetAtTime(0,t,.06);try{faceVoice.osc.stop(t+.45)}catch(e){}faceVoice=null}
+}
+function makeHrtfPanner(){
+ if(ctx.createPanner){const node=ctx.createPanner();node.panningModel='HRTF';node.distanceModel='inverse';node.refDistance=1;node.maxDistance=12;node.rolloffFactor=.65;return node}
+ return ctx.createStereoPanner?ctx.createStereoPanner():ctx.createGain();
+}
+function setAirPosition(node,x,y,z){
+ if(!ctx||!node)return;
+ const t=ctx.currentTime,X=(x-.5)*5*masterWidth*GESTURE_BOOST,Y=(.5-y)*2.4*GESTURE_BOOST,Z=-Math.max(.5,Math.min(5,z));
+ if(node.positionX){node.positionX.setTargetAtTime(X,t,.08);node.positionY.setTargetAtTime(Y,t,.08);node.positionZ.setTargetAtTime(Z,t,.08)}
+ else if(node.pan){node.pan.setTargetAtTime(clamp(X/3,-1,1),t,.08)}
+}
+function ensureAirVoice(){
+ if(!initAudio())return null;if(ctx.state==='suspended')ctx.resume();
+ if(airVoice)return airVoice;
+ const a=ctx.createOscillator(),b=ctx.createOscillator(),f=ctx.createBiquadFilter(),g=ctx.createGain(),p=makeHrtfPanner();
+ a.type='sine';b.type='triangle';f.type='lowpass';f.frequency.value=1800;g.gain.value=0;
+ a.connect(f);b.connect(f);f.connect(g);g.connect(p);p.connect(bus);a.start();b.start();
+ // Audio-rate LFOs avoid 7 fps camera-update stepping of vibrato and tremolo.
+ const vibratoOsc=ctx.createOscillator(),vibratoGainA=ctx.createGain(),vibratoGainB=ctx.createGain();
+ vibratoOsc.type='sine';vibratoOsc.frequency.value=5.5;
+ vibratoGainA.gain.value=0;vibratoGainB.gain.value=0;
+ vibratoOsc.connect(vibratoGainA);vibratoOsc.connect(vibratoGainB);
+ vibratoGainA.connect(a.frequency);vibratoGainB.connect(b.frequency);
+ vibratoOsc.start();
+ const tremoloOsc=ctx.createOscillator(),tremoloGain=ctx.createGain(),tremoloMix=ctx.createGain();
+ tremoloOsc.type='sine';tremoloOsc.frequency.value=4.1;
+ tremoloGain.gain.value=0;tremoloMix.gain.value=1;
+ // Tremolo modulates a dedicated gain downstream of the timbre filter.
+ f.disconnect();f.connect(tremoloMix);tremoloMix.connect(g);
+ tremoloOsc.connect(tremoloGain);tremoloGain.connect(tremoloMix.gain);tremoloOsc.start();
+ airVoice={a,b,f,g,p,note:false,vibratoOsc,vibratoGainA,vibratoGainB,tremoloOsc,tremoloGain,tremoloMix,...connectGestureSends(p)};return airVoice;
+}
+function ensureFaceVoice(){
+ if(!initAudio())return null;if(ctx.state==='suspended')ctx.resume();
+ if(faceVoice)return faceVoice;
+ const osc=ctx.createOscillator(),f=ctx.createBiquadFilter(),g=ctx.createGain(),p=makeHrtfPanner();
+ osc.type='sine';f.type='lowpass';f.frequency.value=640;g.gain.value=0;
+ osc.connect(f);f.connect(g);g.connect(p);p.connect(bus);osc.start();
+ faceVoice={osc,f,g,p,...connectGestureSends(p)};return faceVoice;
+}
+// THEREMIN PURE continuous unquantized voice.
+let thereminFace={mouth:0,x:.5,speed:0,tilt:0};
+let expressiveOn=true;
+const expressiveSettings={vibrato:.35,tremolo:.30,timbre:.65};
+const expToggle=document.getElementById('expressiveToggle');
+expToggle.addEventListener('click',()=>{
+ expressiveOn=!expressiveOn;
+ expToggle.textContent=expressiveOn?'[X] EXPRESSIVE MODE':'[ ] EXPRESSIVE MODE';
+ expToggle.setAttribute('aria-pressed',String(expressiveOn));
+});
+for(const [key,id] of [['vibrato','expressiveVibrato'],['tremolo','expressiveTremolo'],['timbre','expressiveTimbre']]){
+ const input=document.getElementById(id),out=document.getElementById(id+'Read');
+ input.addEventListener('input',()=>{expressiveSettings[key]=Number(input.value)/100;out.textContent=input.value+'%'});
+}
+window.__airMusic={
+ hand(point){
+  if(!point){if(airVoice&&ctx)airVoice.g.gain.setTargetAtTime(0,ctx.currentTime,.12);return}
+  const v=ensureAirVoice();if(!v)return;
+  const t=ctx.currentTime,pitch=clamp(1-point.y),freq=110*Math.pow(2,pitch*4);
+  const volume=clamp(point.volume==null?.38:point.volume),mouth=thereminFace.mouth;
+  const motion=expressiveOn?clamp(thereminFace.speed*2.4,0,1):0;
+  const tilt=expressiveOn?clamp(Math.abs(thereminFace.tilt)/.5,0,1):0;
+  const vibDepth=expressiveOn?freq*(.001+motion*.016)*expressiveSettings.vibrato:0;
+  const tremDepth=expressiveOn?tilt*.48*expressiveSettings.tremolo:0;
+  v.a.type='sine';v.b.type='sine';
+  v.a.frequency.setTargetAtTime(freq,t,.05);
+  v.b.frequency.setTargetAtTime(freq*2,t,.065);
+  v.vibratoOsc.frequency.setTargetAtTime(4.7+motion*2.6,t,.12);
+  v.vibratoGainA.gain.setTargetAtTime(vibDepth,t,.08);
+  v.vibratoGainB.gain.setTargetAtTime(vibDepth*2,t,.08);
+  v.tremoloOsc.frequency.setTargetAtTime(3.5+tilt*3,t,.12);
+  v.tremoloMix.gain.setTargetAtTime(1-tremDepth,t,.09);
+  v.tremoloGain.gain.setTargetAtTime(tremDepth,t,.09);
+  v.f.frequency.setTargetAtTime(850+(expressiveOn?mouth*5200*expressiveSettings.timbre:0)+pitch*1300,t,.09);
+  v.g.gain.setTargetAtTime(Math.pow(volume,1.7)*.17,t,.085);
+  setAirPosition(v.p,thereminFace.x,point.y,.9+(1-(point.depth||.7))*3);
+  updateGestureSends(v,'hand',Math.max(point.speed||0,mouth*.35));v.note=true;
+ },
+ face(point){thereminFace=point?{mouth:clamp(point.mouth||0),x:clamp(point.x??.5),speed:point.speed||0,tilt:point.tilt||0}:{mouth:0,x:.5,speed:0,tilt:0}}
+};
+window.__airMusicStop=stopAirVoices;
+let lastFaceForce=0,lastFaceX=.5,lastFaceY=.5,faceWavePulse=0;
+function closeSheets(){ $('drawer').hidden=true;$('toolsButton').setAttribute('aria-expanded','false');$('toolsButton').setAttribute('data-active','false') }
+$('toolsButton').addEventListener('click',()=>{const next=$('drawer').hidden;$('drawer').hidden=!next;$('toolsButton').setAttribute('aria-expanded',String(next));$('toolsButton').setAttribute('data-active',String(next))});
+$('closeDrawer').addEventListener('click',closeSheets);
+window.addEventListener('error',e=>{$('status').textContent='ERROR: '+String(e.message).slice(0,120)});window.addEventListener('unhandledrejection',e=>{$('status').textContent='AUDIO ERROR: '+String(e.reason).slice(0,120)});
+if(!c){$('status').textContent='CANVAS UNAVAILABLE';return}
+const clamp=(x,a=0,b=1)=>Math.max(a,Math.min(b,x));
+const engines={
+ pad:{label:'PAD',desc:'Soft sustained pad · original TOUCH / FIELD'},
+ nebula:{label:'NEBULA',desc:'Diffuse granular-like shimmering cluster · browser approximation'},
+ prism:{label:'PRISM',desc:'FM-inspired metallic bells and harmonic partials'},
+ resonance:{label:'RESONANCE',desc:'Modal resonator-inspired floating tones'},
+ drone:{label:'DRONE',desc:'Slow beating detuned drone, warm body'},
+ cs80:{label:'CS-80',desc:'Expressive analog-style layered sweep'},
+ gong:{label:'GONG BATH',desc:'Long fading metallic harmonics and bowl tones'}
+};
+let activeEngine='pad';
+$('engineSelector').addEventListener('click',e=>{const b=e.target.closest('button[data-engine]');if(!b)return;activeEngine=b.dataset.engine;
+document.querySelectorAll('#engineSelector button').forEach(el=>{el.classList.toggle('active',el.dataset.engine===activeEngine);el.setAttribute('aria-pressed',String(el.dataset.engine===activeEngine))});
+$('engineDetail').textContent=engines[activeEngine].desc;
+$('engineNow').textContent=engines[activeEngine].label+' / '+mode.toUpperCase();
+$('status').textContent='ENGINE '+engines[activeEngine].label+' · NEXT GESTURE';
+});
+const colors={drift:{h:186,s:44},flow:{h:105,s:51},desire:{h:332,s:46},velvet:{h:263,s:48},abyss:{h:215,s:46}};
+// Each sound engine contributes a typographic signature to the visual world.
+const engineProfiles={
+ pad:{alphabet:".:-=~"},
+ nebula:{alphabet:" .:*+·°"},
+ prism:{alphabet:".:*+/\\|"},
+ resonance:{alphabet:".:;()o"},
+ drone:{alphabet:"._-=#~"},
+ cs80:{alphabet:".:=+xX%"},
+ gong:{alphabet:".:*oO()"}
+};
+const combinedAlphabets={};
+function buildAlphabet(visual,engine){
+ const a=(visualProfiles[visual]||visualProfiles.drift).alphabet;
+ const b=(engineProfiles[engine]||engineProfiles.pad).alphabet;
+ return Array.from(new Set([...a,...b])).join('');
+}
+const engineIds=Object.keys(engineProfiles);
+function engineNumber(engine){return Math.max(0,engineIds.indexOf(engine))+1}
+function engineNameFromNumber(id){return engineIds[id-1]||'pad'}
+const visualProfiles={
+ drift:{alphabet:" .,:;~-=",depth:.80,sparkle:.12,speed:.15,trail:.90,grain:.48},
+ flow:{alphabet:".:|/\\+*x",depth:.55,sparkle:.72,speed:.75,trail:.40,grain:.79},
+ desire:{alphabet:".,;°oO0@",depth:.65,sparkle:.20,speed:.38,trail:.80,grain:.59},
+ velvet:{alphabet:".:-=+xX%",depth:.90,sparkle:.32,speed:.26,trail:.85,grain:.69},
+ abyss:{alphabet:"._-=#%█@",depth:1,sparkle:.08,speed:.09,trail:.95,grain:.48}
+};
+const modes={
+drift:{root:146.83,scale:[0,2,5,7,9,12,14,17],wave:'sine',timbre:'sine',decay:95,loop:16},
+flow:{root:261.63,scale:[0,2,3,5,7,10,12,15],wave:'triangle',timbre:'triangle',decay:42,loop:3.5},
+desire:{root:130.81,scale:[0,3,5,7,10,12,15,19],wave:'sine',timbre:'triangle',decay:72,loop:10},
+velvet:{root:82.41,scale:[0,3,5,7,10,12,15,19],wave:'sawtooth',timbre:'triangle',decay:83,loop:12,cs80:true},
+abyss:{root:55,scale:[0,2,5,7,10,12,14,17],wave:'sawtooth',timbre:'sawtooth',decay:95,loop:15,cs80:true}
+};
+let mode='drift',W=1,H=1,dpr=1,ctx=null,bus=null,comp=null,room=null,roomGain=null,feedback=null,mediaDest=null,analyser=null,frequencyBins=null,timeBins=null,spectrum={bass:0,mid:0,high:0,rms:0,attack:0},muted=false,masterLevel=.65,masterWidth=.65,masterSpace=.35,recorder=null,recTimer=null,recording=false,recordingStart=0;
+let lastDraw=0,playingTouches=new Map(),organisms=[],nextOrganismId=1,phases=0,freezeOn=false,slowMotion=0;
+let memoryGrid=null,memoryEngine=null,memoryW=0,memoryH=0,lastMemoryTime=0;
+let fieldX=null,fieldY=null,velocityX=null,velocityY=null,nextVX=null,nextVY=null,fieldCols=0,fieldRows=0,fieldStepX=12,fieldStepY=13;
+let touchForces=[];
+const MAX_ORGANISMS=4,MAX_PATH=180;
+function resize(){W=Math.max(innerWidth,1);H=Math.max(innerHeight,1);dpr=Math.min(1.5,devicePixelRatio||1);cv.width=Math.round(W*dpr);cv.height=Math.round(H*dpr);c.setTransform(dpr,0,0,dpr,0,0);memoryW=Math.max(16,Math.ceil(W/13));memoryH=Math.max(22,Math.ceil(H/17));memoryGrid=new Float32Array(memoryW*memoryH);memoryEngine=new Uint8Array(memoryW*memoryH);initPhysics()}addEventListener('resize',resize);resize();
+function toast(s){$('toast').textContent=s;$('toast').classList.add('show');setTimeout(()=>$('toast').classList.remove('show'),1700)}
+function initAudio(){if(ctx)return true;try{const AC=window.AudioContext||window.webkitAudioContext;if(!AC)throw Error('Audio unsupported');ctx=new AC();bus=ctx.createGain();bus.gain.value=masterLevel;comp=ctx.createDynamicsCompressor();comp.threshold.value=-20;comp.ratio.value=5;comp.attack.value=.012;comp.release.value=.29;room=ctx.createDelay(.95);room.delayTime.value=.32;roomGain=ctx.createGain();roomGain.gain.value=.05+masterSpace*.38;feedback=ctx.createGain();feedback.gain.value=.09+masterSpace*.24;bus.connect(comp);bus.connect(room);analyser=ctx.createAnalyser();analyser.fftSize=1024;analyser.smoothingTimeConstant=.82;frequencyBins=new Uint8Array(analyser.frequencyBinCount);timeBins=new Uint8Array(analyser.fftSize);bus.connect(analyser);room.connect(roomGain);roomGain.connect(comp);room.connect(feedback);feedback.connect(room);comp.connect(ctx.destination);mediaDest=ctx.createMediaStreamDestination();comp.connect(mediaDest);return true}catch(e){$('status').textContent='AUDIO ERROR: '+e.message;return false}}
+function unlockAudio(){if(!initAudio())return false;try{const p=ctx.resume();if(p&&p.then)p.then(()=>{if(ctx.state==='running'){$('startaudio').textContent='✓ AUDIO';$('startaudio').classList.add('active');$('status').textContent='AUDIO READY · TOUCH TO CREATE'}else $('status').textContent='AUDIO '+ctx.state.toUpperCase()}).catch(e=>$('status').textContent='AUDIO BLOCKED: '+e.message);return true}catch(e){$('status').textContent='AUDIO BLOCKED: '+e.message;return false}}
+$('startaudio').addEventListener('click',()=>{if(!unlockAudio())return;testSound()});
+function testSound(){
+ unlockAudio();if(!ctx)return;
+ // Short audible diagnostic chord, chosen above the low-frequency rolloff of phone speakers.
+ const t=ctx.currentTime,oscs=[440,554.37,659.25];
+ for(const freq of oscs){const o=ctx.createOscillator(),gain=ctx.createGain();o.type='sine';o.frequency.value=freq;gain.gain.setValueAtTime(.0001,t);gain.gain.linearRampToValueAtTime(.072,t+.05);gain.gain.setTargetAtTime(.0001,t+.55,.13);o.connect(gain);gain.connect(bus);o.start(t);o.stop(t+1.3)}
+ $('status').textContent='TEST SOUND · 440 / 554 / 659 Hz';
+}
+// AUDIO button above also plays the test chord; no obsolete TEST SOUND control.
+function noteFromX(nx,m){const scale=modes[m].scale;let ix=Math.min(scale.length-1,Math.floor(nx*scale.length));return modes[m].root*Math.pow(2,scale[ix]/12)}
+function createAudio(o){if(!initAudio())return;if(ctx.state==='suspended')ctx.resume();const a=ctx.createOscillator(),b=ctx.createOscillator(),f=ctx.createBiquadFilter(),gain=ctx.createGain();const profile=modes[o.mode],kind=o.engine||'pad';
+a.type=kind==='nebula'||kind==='resonance'||kind==='gong'?'sine':kind==='prism'?'sine':kind==='cs80'||kind==='drone'?'sawtooth':profile.wave;
+b.type=kind==='prism'||kind==='resonance'?'sine':kind==='gong'?'triangle':kind==='cs80'?'sawtooth':profile.timbre;
+f.type='lowpass';f.Q.value=kind==='resonance'?7:kind==='cs80'?2.5:profile.cs80?1.15:.8;gain.gain.value=.0001;
+a.connect(f);b.connect(f);f.connect(gain);const stereo=ctx.createStereoPanner?ctx.createStereoPanner():ctx.createGain();gain.connect(stereo);stereo.connect(bus);a.start();b.start();
+let harmonic=null,harmonicGain=null;
+if(profile.cs80||o.mode==='flow'||kind!=='pad'){harmonic=ctx.createOscillator();harmonicGain=ctx.createGain();
+harmonic.type=kind==='nebula'||kind==='prism'||kind==='gong'?'sine':kind==='cs80'?'sawtooth':'triangle';
+harmonicGain.gain.value=kind==='gong'?.24:kind==='prism'?.22:kind==='resonance'?.12:kind==='drone'?.08:kind==='nebula'?.11:kind==='cs80'?.12:o.mode==='flow'?.22:o.mode==='abyss'?.16:.11;
+harmonic.connect(harmonicGain);harmonicGain.connect(f);harmonic.start()}
+o.audio={a,b,f,gain,stereo,harmonic,harmonicGain};o.bornAudio=ctx.currentTime;updateAudio(o,performance.now(),true)}
+function updateAudio(o,now,first=false){if(!ctx||!o.audio)return;const p=sample(o,now),pr=modes[o.mode],nx=p.x,ny=p.y,cycle=(now-o.born)/1000/(pr.loop||8),swell=.73+.27*Math.sin(cycle*Math.PI*2),level=(.038+.11*o.life)*swell*(o.active?1:.82),fq=noteFromX(nx,o.mode),a=o.audio;
+ // Nearby organisms slightly detune one another: they modify existing notes, never trigger a new oscillator.
+ let proximity=0;
+ for(const other of organisms){if(other===o||other.life<=.03)continue;const q=sample(other,now),distance=Math.hypot(nx-q.x,ny-q.y);proximity+=Math.max(0,1-distance/.22)*other.life}
+ const interaction=clamp(proximity,0,1);if(a.stereo&&a.stereo.pan)a.stereo.pan.setTargetAtTime(clamp((nx*2-1)*masterWidth,-1,1),ctx.currentTime,.12);
+a.a.frequency.setTargetAtTime(fq*(1+interaction*.006),ctx.currentTime,.085);
+if(pr.cs80){
+ const lfo=Math.sin(cycle*Math.PI*2*(o.mode==='abyss'?3:5));
+ const detune=o.mode==='abyss'?.007:.0045;
+ a.b.frequency.setTargetAtTime(fq*(1+detune+lfo*.0015),ctx.currentTime,.12);
+ if(a.harmonic)a.harmonic.frequency.setTargetAtTime(fq*(o.mode==='abyss'?4:3),ctx.currentTime,.12);
+ a.f.frequency.setTargetAtTime(330+Math.pow(1-ny,1.7)*(o.mode==='abyss'?1550:2300)+lfo*120+interaction*280,ctx.currentTime,.13);
+ // Mid harmonics keep sub-root notes audible on small phone speakers.
+ a.gain.gain.setTargetAtTime(Math.max(.0001,level*.70),ctx.currentTime,first?.38:.22);
+}else if(o.mode==='drift'){
+ // DRIFT: near-pure, slowly breathing sustained tone with a barely beating unison.
+ a.b.frequency.setTargetAtTime(fq*1.003,ctx.currentTime,.19);
+ a.f.frequency.setTargetAtTime(620+Math.pow(1-ny,1.4)*1300+interaction*250,ctx.currentTime,.22);
+ const breath=.65+.35*Math.sin((now-o.born)*.001*Math.PI/7);
+ a.gain.gain.setTargetAtTime(Math.max(.0001,level*.64*breath),ctx.currentTime,first?.42:.25);
+}else if(o.mode==='flow'){
+ // FLOW: bright bell-like partial and patterned amplitude pulse; distinct from the drifting pad.
+ a.b.frequency.setTargetAtTime(fq*1.5,ctx.currentTime,.055);
+ if(a.harmonic)a.harmonic.frequency.setTargetAtTime(fq*3,ctx.currentTime,.07);
+ const pulse=.46+.54*Math.pow(Math.max(0,Math.sin((now-o.born)*.001*Math.PI*2*2.5)),3);
+ a.f.frequency.setTargetAtTime(1400+Math.pow(1-ny,1.1)*5200+interaction*360,ctx.currentTime,.065);
+ a.gain.gain.setTargetAtTime(Math.max(.0001,level*.76*pulse),ctx.currentTime,first?.12:.052);
+}else{
+ a.b.frequency.setTargetAtTime(fq*2*(1+.003*Math.sin(cycle*6.28)),ctx.currentTime,.11);
+ a.f.frequency.setTargetAtTime(520+Math.pow(1-ny,1.55)*2800+interaction*400,ctx.currentTime,.12);
+ a.gain.gain.setTargetAtTime(Math.max(.0001,level),ctx.currentTime,first?.32:.18);
+}
+if(o.engine&&o.engine!=='pad'){
+ const kind=o.engine,t=ctx.currentTime;
+ const slow=(now-o.born)*.001,osc=Math.sin(slow*.38+o.id*.25);
+ let secondary=2,third=3,cut=1900,volume=.8,attack=.18;
+ if(kind==='nebula'){secondary=1.5+osc*.004;third=2.01;cut=1050+(1-ny)*1700;volume=.75;attack=.36}
+ else if(kind==='prism'){secondary=2.0;third=3.5;cut=3600+(1-ny)*2900;volume=.51;attack=.06}
+ else if(kind==='resonance'){secondary=2.003;third=2.76;cut=700+(1-ny)*2100;volume=.62;attack=.16}
+ else if(kind==='drone'){secondary=1.006+osc*.004;third=1.5;cut=500+(1-ny)*1700;volume=.54;attack=.37}
+ else if(kind==='cs80'){secondary=1.005+osc*.003;third=2;cut=680+(1-ny)*4100;volume=.54;attack=.18}
+ else if(kind==='gong'){secondary=1.41;third=2.72;cut=1050+(1-ny)*3000;volume=.45;attack=.30}
+ a.b.frequency.setTargetAtTime(fq*secondary,t,.09);
+ if(a.harmonic)a.harmonic.frequency.setTargetAtTime(fq*third,t,.11);
+ a.f.frequency.setTargetAtTime(cut+interaction*200,t,.12);
+ const wave=kind==='prism'?.75+.25*Math.sin(slow*2.7):kind==='gong'?.65+.35*Math.sin(slow*.5):.82+.18*Math.sin(slow*.6);
+ a.gain.gain.setTargetAtTime(Math.max(.0001,level*volume*wave),t,first?Math.max(.1,attack):.20);
+}
+}
+function destroy(o){if(!o.audio||!ctx)return;const t=ctx.currentTime;o.audio.gain.gain.setTargetAtTime(.00001,t,.14);for(const x of [o.audio.a,o.audio.b,o.audio.harmonic])if(x)try{x.stop(t+.85)}catch(e){}o.audio=null}
+function retireOldest(){while(organisms.length>MAX_ORGANISMS){let i=organisms.findIndex(o=>!o.active);if(i<0)i=0;const [old]=organisms.splice(i,1);destroy(old)}}
+function sample(o,now){
+ const path=o.path;if(!path.length)return{x:.5,y:.5};if(path.length===1)return path[0];
+ if(o.active)return path[path.length-1];
+ const period=modes[o.mode].loop*1000,phase=((now-o.released)%period+period)%period/period;
+ const at=phase*(path.length-1),i=Math.floor(at),u=at-i;
+ const a=path[Math.max(0,i-1)],b=path[i],d=path[Math.min(path.length-1,i+1)],e=path[Math.min(path.length-1,i+2)];
+ const interp=(k)=>clamp(.5*((2*b[k])+(-a[k]+d[k])*u+(2*a[k]-5*b[k]+4*d[k]-e[k])*u*u+(-a[k]+3*b[k]-3*d[k]+e[k])*u*u*u));
+ return{x:interp('x'),y:interp('y')};
+}
+function addPoint(o,x,y){const p={x:clamp(x/W),y:clamp(y/H)};if(o.path.length>=MAX_PATH)o.path=o.path.filter((_,i)=>i%2===0);o.path.push(p);stampMemory(x,y,.16,o.engine)}
+function newOrganism(id,x,y){$('center').classList.add('hidden');const o={id:nextOrganismId++,mode,engine:activeEngine,alphabet:buildAlphabet(mode,activeEngine),profile:visualProfiles[mode],created:performance.now(),born:performance.now(),released:0,active:true,path:[],life:1,audio:null};addPoint(o,x,y);organisms.push(o);playingTouches.set(id,{o,x,y,t:performance.now()});retireOldest();createAudio(o);$('status').textContent='LIVE · '+organisms.length+' ORGANISM'+(organisms.length===1?'':'S')+(ctx?' · AUDIO '+ctx.state.toUpperCase():'');return o}
+window.__airUnlock=unlockAudio;
+window.__airGesture=(x,y,dx,dy,speed)=>{pushField(x*W,y*H,dx*GESTURE_BOOST,dy*GESTURE_BOOST,Math.min(2,(.45+speed)*GESTURE_BOOST))};
+function down(e){if(e.pointerType==='mouse'&&e.button!==0)return;e.preventDefault();closeSheets();pushField(e.clientX,e.clientY,0,-10,.8);unlockAudio();try{cv.setPointerCapture(e.pointerId)}catch(_){}const o=newOrganism(e.pointerId,e.clientX,e.clientY);updateAudio(o,performance.now(),true)}
+function move(e){const p=playingTouches.get(e.pointerId);if(!p)return;e.preventDefault();const now=performance.now(),dx=e.clientX-p.x,dy=e.clientY-p.y;if(Math.hypot(dx,dy)>5){pushField(e.clientX,e.clientY,dx,dy,1+Math.min(1,Math.hypot(dx,dy)/35));addPoint(p.o,e.clientX,e.clientY);p.x=e.clientX;p.y=e.clientY;p.t=now;updateAudio(p.o,now)}}
+function up(e){const p=playingTouches.get(e.pointerId);if(!p)return;e.preventDefault();p.o.active=false;p.o.released=performance.now();playingTouches.delete(e.pointerId);$('status').textContent='LIVING · '+organisms.length+' ORGANISMS'}
+if(window.PointerEvent){cv.addEventListener('pointerdown',down,{passive:false});cv.addEventListener('pointermove',move,{passive:false});for(const kind of ['pointerup','pointercancel','lostpointercapture'])cv.addEventListener(kind,up,{passive:false})}else{
+let touchMap=new Map();
+cv.addEventListener('touchstart',e=>{e.preventDefault();for(const touch of e.changedTouches){const id=touch.identifier+10000;touchMap.set(touch.identifier,id);down({pointerId:id,pointerType:'touch',clientX:touch.clientX,clientY:touch.clientY,preventDefault(){}})}},{passive:false});
+cv.addEventListener('touchmove',e=>{e.preventDefault();for(const touch of e.changedTouches){const id=touchMap.get(touch.identifier);if(id!==undefined)move({pointerId:id,clientX:touch.clientX,clientY:touch.clientY,preventDefault(){}})}},{passive:false});
+function finishTouches(e){e.preventDefault();for(const touch of e.changedTouches){const id=touchMap.get(touch.identifier);if(id!==undefined){up({pointerId:id,preventDefault(){}});touchMap.delete(touch.identifier)}}}
+cv.addEventListener('touchend',finishTouches,{passive:false});cv.addEventListener('touchcancel',finishTouches,{passive:false});
+}
+function clearAll(){for(const o of organisms)destroy(o);organisms=[];playingTouches.clear();if(memoryGrid)memoryGrid.fill(0);if(memoryEngine)memoryEngine.fill(0);if(fieldX){fieldX.fill(0);fieldY.fill(0);velocityX.fill(0);velocityY.fill(0);}$('status').textContent='FIELD CLEARED · TOUCH TO CREATE';closeSheets()}
+$('clear').addEventListener('click',clearAll);
+$('freeze').addEventListener('click',()=>{
+ freezeOn=!freezeOn;const now=performance.now();
+ for(const o of organisms){if(freezeOn){o.frozenLife=o.life;o.freezeAt=now;}else if(o.freezeAt){o.released+=now-o.freezeAt;o.freezeAt=null;}}
+ $('freeze').classList.toggle('active',freezeOn);$('freeze').textContent=freezeOn?'❄ FROZEN':'❄ FREEZE';$('status').textContent=freezeOn?'FREEZE · ORGANISMS PRESERVED':'UNFROZEN · ORGANISMS EVOLVING';
+});
+$('replay').addEventListener('click',()=>{
+ const now=performance.now();if(!organisms.length){toast('DRAW AN ORGANISM FIRST');return}
+ for(const o of organisms){if(!o.active){o.released=now;o.born=now;o.life=1;if(freezeOn)o.freezeAt=now;}}
+ $('replay').classList.add('active');setTimeout(()=>$('replay').classList.remove('active'),430);$('status').textContent='REPLAY · ALL PATHS RESTARTED';
+});
+$('sound').addEventListener('click',()=>{muted=!muted;$('sound').textContent=muted?'SOUND OFF':'SOUND ON';$('sound').classList.toggle('active',muted);if(ctx&&bus)bus.gain.setTargetAtTime(muted?0:masterLevel,ctx.currentTime,.035)});
+document.querySelectorAll('[data-mode]').forEach(el=>el.addEventListener('click',()=>{mode=el.dataset.mode;document.querySelectorAll('[data-mode]').forEach(b=>b.classList.toggle('active',b.dataset.mode===mode));$('engineNow').textContent=engines[activeEngine].label+' / '+mode.toUpperCase();$('status').textContent=mode.toUpperCase()+' · '+(mode==='velvet'?'82 Hz · WARM CS-80 STYLE':mode==='abyss'?'55 Hz · DEEP CS-80 STYLE':'NEXT GESTURE USES THIS MODE');closeSheets()}));
+function downloadBlob(blob,type){const ext=type.includes('mp4')?'mp4':'webm';const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='touch-field-'+Date.now()+'.'+ext;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),30000)}
+function stopRecording(){if(!recording)return;recording=false;clearInterval(recTimer);recTimer=null;$('rec').classList.remove('recording');$('rec').innerHTML='● 30s<span id="timer"></span>';if(recorder&&recorder.state!=='inactive')recorder.stop()}
+$('rec').addEventListener('click',()=>{if(recording){stopRecording();return}if(!window.MediaRecorder||!cv.captureStream){toast('EXPORT VIDEO NOT SUPPORTED');return}if(!initAudio())return;ctx.resume();const stream=cv.captureStream(24),audioTracks=mediaDest.stream.getAudioTracks();for(const t of audioTracks)stream.addTrack(t);const kinds=['video/mp4','video/webm;codecs=vp9,opus','video/webm'];const mime=kinds.find(x=>MediaRecorder.isTypeSupported(x))||'';try{const chunks=[];recorder=new MediaRecorder(stream,{...(mime?{mimeType:mime}:{})});recorder.ondataavailable=e=>{if(e.data.size)chunks.push(e.data)};recorder.onstop=()=>{if(chunks.length)downloadBlob(new Blob(chunks,{type:mime||recorder.mimeType}),mime||recorder.mimeType);else toast('NO VIDEO RECORDED');stream.getTracks().forEach(t=>t.stop())};recorder.start(1000);recording=true;recordingStart=Date.now();$('rec').classList.add('recording');recTimer=setInterval(()=>{const sec=Math.floor((Date.now()-recordingStart)/1000);$('rec').textContent='■ '+(30-sec)+'s';if(sec>=30)stopRecording()},250);toast('CAPTURING 30s')}catch(e){toast('EXPORT NOT AVAILABLE ON THIS DEVICE')}});
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&recording)stopRecording()});
+
+function initPhysics(){
+ // One force-coupled character field, shared by all three parallax depths.
+ // State remains bounded to limit CPU use on iPhone Safari.
+ fieldStepX=W<430?11:14;fieldStepY=13;
+ fieldCols=Math.max(3,Math.ceil(W/fieldStepX)+1);fieldRows=Math.max(3,Math.ceil(H/fieldStepY)+1);
+ const n=fieldCols*fieldRows;
+ fieldX=new Float32Array(n);fieldY=new Float32Array(n);velocityX=new Float32Array(n);velocityY=new Float32Array(n);
+ nextVX=new Float32Array(n);nextVY=new Float32Array(n);touchForces=[];
+}
+function pushField(x,y,dx,dy,force=1){
+ const now=performance.now();
+ touchForces.push({x,y,dx,dy,power:clamp(force,.1,2),time:now});
+ if(touchForces.length>18)touchForces.shift();
+}
+function samplePhysics(x,y){
+ if(!fieldX)return{x:0,y:0};
+ const px=clamp(x/fieldStepX,0,fieldCols-1),py=clamp(y/fieldStepY,0,fieldRows-1);
+ const x0=Math.floor(px),y0=Math.floor(py),x1=Math.min(fieldCols-1,x0+1),y1=Math.min(fieldRows-1,y0+1),fx=px-x0,fy=py-y0;
+ const a=y0*fieldCols+x0,b=y0*fieldCols+x1,c=y1*fieldCols+x0,d=y1*fieldCols+x1;
+ const mix=(arr)=>((arr[a]*(1-fx)+arr[b]*fx)*(1-fy)+(arr[c]*(1-fx)+arr[d]*fx)*fy);
+ return{x:mix(fieldX),y:mix(fieldY)};
+}
+function updatePhysics(now,dt,positions){
+ if(!fieldX)return;
+ const frame=Math.min(2,dt/33.3),cols=fieldCols,rows=fieldRows;
+ const damping=Math.pow(.89,frame),stiffness=.055*frame,coupling=.14*frame;
+ touchForces=touchForces.filter(f=>now-f.time<250);
+ const fw=window.__faceWave;
+ if(fw?.active&&fw.visible&&now-fw.t<650&&now-lastFaceForce>90){
+  const fx=fw.x*W,fy=fw.y*H;
+  const moveX=(fw.x-lastFaceX)*W,moveY=(fw.y-lastFaceY)*H;
+  const swell=(.65+Math.min(2,fw.mouth*4)+Math.min(.8,fw.speed*2))*GESTURE_BOOST;
+  // The existing elastic lattice receives directional face impulses.
+  pushField(fx,fy,moveX+fw.tilt*9,moveY,swell);
+  lastFaceForce=now;lastFaceX=fw.x;lastFaceY=fw.y;
+ }
+ const bass=clamp(spectrum.bass*1.7),rms=clamp(spectrum.rms*4);
+ for(let y=1;y<rows-1;y++)for(let x=1;x<cols-1;x++){
+  const i=y*cols+x,left=i-1,right=i+1,up=i-cols,down=i+cols;
+  // Elastic return and neighbouring-character interactions, not random displacement.
+  let vx=velocityX[i]*damping-fieldX[i]*stiffness;
+  let vy=velocityY[i]*damping-fieldY[i]*stiffness;
+  vx+=((fieldX[left]+fieldX[right]+fieldX[up]+fieldX[down])*.25-fieldX[i])*coupling;
+  vy+=((fieldY[left]+fieldY[right]+fieldY[up]+fieldY[down])*.25-fieldY[i])*coupling;
+  const px=x*fieldStepX,py=y*fieldStepY;
+  for(const f of touchForces){
+   const dx=px-f.x,dy=py-f.y,dist2=dx*dx+dy*dy;
+   const influence=Math.exp(-dist2/5400)*(1-(now-f.time)/250)*f.power;
+   vx+=(f.dx*.045-dy*.0025)*influence*frame;
+   vy+=(f.dy*.045+dx*.0025)*influence*frame;
+  }
+  for(const item of positions){
+   const dx=px-item.p.x*W,dy=py-item.p.y*H,dist2=dx*dx+dy*dy+800;
+   const spin=Math.min(1.6,2200/dist2)*item.o.life*(.12+.26*rms);
+   vx+=(-dy/Math.sqrt(dist2))*spin*frame;
+   vy+=(dx/Math.sqrt(dist2))*spin*frame;
+  }
+  // Bass pressure travels through the lattice as low-amplitude energy.
+  const pressure=(bass*.024)*Math.sin(x*.26+y*.22+now*.0017);
+  vx+=pressure*frame;vy+=pressure*.6*frame;
+  nextVX[i]=clamp(vx,-2.5,2.5);
+  nextVY[i]=clamp(vy,-2.5,2.5);
+ }
+ for(let y=1;y<rows-1;y++)for(let x=1;x<cols-1;x++){
+  const i=y*cols+x;
+  velocityX[i]=nextVX[i];velocityY[i]=nextVY[i];
+  fieldX[i]=clamp(fieldX[i]+velocityX[i]*frame,-24,24);
+  fieldY[i]=clamp(fieldY[i]+velocityY[i]*frame,-24,24);
+ }
+}
+function stampMemory(x,y,power,engine='pad'){
+ if(!memoryGrid||!memoryEngine)return;
+ const ix=Math.round(clamp(x/W)*(memoryW-1)),iy=Math.round(clamp(y/H)*(memoryH-1)),signature=engineNumber(engine);
+ for(let yy=-2;yy<=2;yy++)for(let xx=-2;xx<=2;xx++){
+  const col=ix+xx,row=iy+yy;if(col<0||row<0||col>=memoryW||row>=memoryH)continue;
+  const fall=Math.exp(-(xx*xx+yy*yy)/3),idx=row*memoryW+col,amount=fall*power;
+  if(amount>.025 && (memoryGrid[idx]<.18 || amount>memoryGrid[idx]*.24))memoryEngine[idx]=signature;
+  memoryGrid[idx]=Math.min(1.7,memoryGrid[idx]+amount);
+ }
+}
+function memoryIndex(x,y){if(!memoryGrid)return 0;const ix=Math.floor(clamp(x/W)*(memoryW-1)),iy=Math.floor(clamp(y/H)*(memoryH-1));return iy*memoryW+ix}
+function getMemory(x,y){return memoryGrid?memoryGrid[memoryIndex(x,y)]||0:0}
+function getMemoryEngine(x,y){return memoryEngine?engineNameFromNumber(memoryEngine[memoryIndex(x,y)]):'pad'}
+function readAudioSpectrum(){
+ if(!analyser||!ctx||ctx.state!=='running'){spectrum.bass*=.94;spectrum.mid*=.94;spectrum.high*=.94;spectrum.rms*=.94;spectrum.attack*=.85;return}
+ analyser.getByteFrequencyData(frequencyBins);analyser.getByteTimeDomainData(timeBins);
+ const hz=ctx.sampleRate/analyser.fftSize;
+ const band=(min,max)=>{let sum=0,count=0;for(let i=Math.max(1,Math.floor(min/hz));i<Math.min(frequencyBins.length,Math.ceil(max/hz));i++){sum+=frequencyBins[i]/255;count++}return count?sum/count:0};
+ const bass=band(40,180),mid=band(180,2000),high=band(2000,8000);
+ let sq=0;for(let i=0;i<timeBins.length;i+=4){const v=(timeBins[i]-128)/128;sq+=v*v}const rms=Math.sqrt(sq/(timeBins.length/4));
+ const prev=spectrum.rms;spectrum.bass+=.24*(bass-spectrum.bass);spectrum.mid+=.22*(mid-spectrum.mid);spectrum.high+=.20*(high-spectrum.high);spectrum.rms+=.20*(rms-spectrum.rms);
+ spectrum.attack=Math.max(spectrum.attack*.82,Math.max(0,rms-prev)*5.5);
+}
+function drawLayer(now,layer,positions){
+ const t=now*.001,z=layer===0?.65:layer===1?1:1.32;
+ // Denser cell spacing on all three layers, with a full foreground character lattice.
+ const gapX=(W<430?8.5:10)/z,gapY=11.5/z;
+ const driftSpeed=layer===0?.20:layer===1?.50:1;
+ const fontSize=layer===0?8:layer===1?10.5:12.5;
+ c.font=fontSize+'px Menlo,Monaco,monospace';c.textAlign='center';c.textBaseline='middle';
+ for(let yi=0,y=gapY*.5;y<H;yi++,y+=gapY){
+  for(let xi=0,x=gapX*.5;x<W;xi++,x+=gapX){
+   let dx=0,dy=0,glow=0,hue=colors[mode].h,sat=colors[mode].s,dominant=mode,dominantEngine=activeEngine,strongest=0,intersection=0;
+   for(const item of positions){
+    const px=item.p.x*W,py=item.p.y*H,rx=x-px,ry=y-py,distSq=rx*rx+ry*ry+350,rr=Math.sqrt(distSq);
+    const force=Math.min(1.5,2800/distSq)*item.o.life*item.o.profile.depth;
+    dx+=(-ry/rr)*force*14*z;dy+=(rx/rr)*force*14*z;
+    const nearby=Math.max(0,1-rr/(layer===0?230:layer===1?145:110))*item.o.life;
+    if(nearby>0){glow+=nearby*.34;intersection+=nearby}
+    if(nearby>strongest){strongest=nearby;dominant=item.o.mode;dominantEngine=item.o.engine;hue=item.tint.h;sat=item.tint.s}
+   }
+   const prof=visualProfiles[dominant],mem=getMemory(x,y),deep=spectrum.bass,mid=spectrum.mid,treble=spectrum.high;
+   // The typeface inherited from a gesture survives after that organism has dissolved.
+   const tracedEngine=mem>.09?getMemoryEngine(x,y):null;
+   if(tracedEngine && mem*.75>strongest){dominantEngine=tracedEngine}
+   const alphabet=buildAlphabet(dominant,dominantEngine);
+   const fw=window.__faceWave;
+   if(fw?.active&&fw.visible&&now-fw.t<650){
+    const fx=fw.x*W,fy=fw.y*H,rx=x-fx,ry=y-fy;
+    const radius=Math.sqrt(rx*rx+ry*ry)+1,life=(now-fw.t)*.001;
+    // Radial ripples deform individual glyphs without changing their alphabet.
+    const aperture=.45+Math.min(1.6,fw.mouth*5);
+    const attenuation=Math.exp(-radius/(115+fw.mouth*105));
+    const wave=Math.sin(radius*.061-t*5.2+fw.tilt*3)*attenuation*(5+8*aperture)*GESTURE_BOOST;
+    dx+=(rx/radius)*wave;
+    dy+=(ry/radius)*wave;
+   }
+   const elastic=samplePhysics(x,y);
+   dx+=elastic.x*(layer===0?.55:layer===1?1:1.3);
+   dy+=elastic.y*(layer===0?.55:layer===1?1:1.3);
+   const flow=Math.sin((x+dx)*(.012+prof.speed*.045)+t*(.12+prof.speed*1.65)*driftSpeed)*
+              Math.cos((y+dy)*(.015+prof.speed*.05)-t*(.1+prof.speed*1.3)*driftSpeed);
+   // Deterministic per-glyph sparkle, modulated by real measured high frequencies.
+   const flicker=Math.sin(xi*12.9898+yi*78.233+Math.floor(t*(1+prof.sparkle*8)))*.5+.5;
+   const staticNoise=Math.sin(xi*127.1+yi*311.7)*43758.5453;
+   const noise=staticNoise-Math.floor(staticNoise);
+   const v=.39+flow*.25+glow*.50+mem*.31+deep*.40+mid*.15+(noise-.5)*.095;
+   // Reduced rejection and small stable amount of depth-dependent thinning.
+   if(v<.125 || (layer===0&&noise>.88)||(layer===2&&noise>.96))continue;
+   // Low-frequency energy selects the visually heavier glyphs.
+   const densityBoost=deep*.38+mem*.09;
+   const charIndex=clamp(Math.floor((v+densityBoost+.08)*alphabet.length*.81),1,alphabet.length-1);
+   const sparkInput=treble*(.25+prof.sparkle*2.7)+spectrum.attack*.9;
+   const sparking=flicker>1-clamp(sparkInput,0,.85)*.25&&(glow+mem>.13||layer===2);
+   const brightness=clamp(.31+glow*.31+mem*.17+spectrum.rms*1.6+(sparking?.33:0),.15,1);
+   const alpha=clamp((layer===0?.27:layer===1?.59:.65)*brightness,.04,.88);
+   const shiftedHue=intersection>.75?(hue+24)%360:hue,gray=layer===0?56:layer===1?68:82;
+   const glyph=alphabet[charIndex]||'.';
+   if(layer===2&&v>.78){c.fillStyle='hsla('+shiftedHue+','+sat+'%,'+(gray+7)+'%,'+(alpha*.22)+')';c.fillText(glyph,x+dx+1.5,y+dy+1.5)}
+   c.fillStyle='hsla('+shiftedHue+','+(sat+(sparking?17:0))+'%,'+(gray+(sparking?12:0))+'%,'+alpha+')';
+   c.fillText(glyph,x+dx,y+dy);
+  }
+ }
+}
+function render(now){
+ requestAnimationFrame(render);if(now-lastDraw<34)return;const dt=Math.min(90,Math.max(16,now-lastDraw));lastDraw=now;readAudioSpectrum();
+ if(memoryGrid&&!freezeOn){const retention=Math.exp(-dt/(visualProfiles[mode].trail*115000));for(let i=0;i<memoryGrid.length;i++)memoryGrid[i]*=retention}
+ const living=[];for(const o of organisms){if(!o.active){o.life=freezeOn?Math.max(.02,o.frozenLife??o.life):Math.max(0,1-(now-o.released)/(modes[o.mode].decay*1000));if(o.life<=.025){destroy(o);continue}}
+ living.push(o);if(o.audio&&ctx&&ctx.state==='running')updateAudio(o,now)}organisms=living;
+ const positions=organisms.map(o=>({o,p:sample(o,now),tint:colors[o.mode]}));
+ updatePhysics(now,dt,positions);
+ c.fillStyle='#04080c';c.fillRect(0,0,W,H);
+ // Back -> middle -> foreground. Each depth has its own density and movement.
+ drawLayer(now,0,positions);drawLayer(now,1,positions);drawLayer(now,2,positions);updateTerminalSignal();
+ if(!organisms.length&&!playingTouches.size)$('status').textContent='READY · TOUCH TO DRAW AN ORGANISM';
+}
+requestAnimationFrame(render);
+})();
+</script>
+<script type="module">
+const button=document.getElementById('faceToggle'),status=document.getElementById('faceStatus'),video=document.getElementById('faceVideo');
+const handButton=document.getElementById('handToggle'),faceButton=document.getElementById('faceMusicToggle'),waveButton=document.getElementById('faceWaveToggle'),pos=document.getElementById('airPosition');
+let stream=null,faceTracker=null,handTracker=null,running=false,generation=0,frameHandle=0,lastFrame=0,lastVideoTime=-1,prevFace=null,prevHand=null,handPinched=false;
+let handEnabled=true,faceMusicEnabled=true,wavesEnabled=true;
+const calKey='theremin-pure-cal-v1',defaults={pitchLow:.85,pitchHigh:.15,volumeLow:.85,volumeHigh:.15};
+let cal={...defaults},step=-1,smoothedPitch=null,smoothedVolume=null,liveHands={right:null,left:null};
+try{const s=JSON.parse(localStorage.getItem(calKey)||'null');if(s&&Object.keys(defaults).every(k=>Number.isFinite(s[k])&&s[k]>=0&&s[k]<=1)&&s.pitchLow-s.pitchHigh>.12&&s.volumeLow-s.volumeHigh>.12)cal=s}catch(_){}
+const steps=[['pitchLow','right','1/4 RIGHT HAND LOW'],['pitchHigh','right','2/4 RIGHT HAND HIGH'],['volumeLow','left','3/4 LEFT HAND LOW'],['volumeHigh','left','4/4 LEFT HAND HIGH']];
+const capture=document.getElementById('calCapture'),reset=document.getElementById('calReset'),stepText=document.getElementById('calStep'),readCal=document.getElementById('calReadout');
+function showCal(){readCal.textContent='PITCH: '+cal.pitchLow.toFixed(2)+' / '+cal.pitchHigh.toFixed(2)+' | VOLUME: '+cal.volumeLow.toFixed(2)+' / '+cal.volumeHigh.toFixed(2)}
+function normalize(y,low,high){return Math.max(0,Math.min(1,(low-y)/(low-high)))}
+capture.addEventListener('click',()=>{
+ if(step<0){step=0;capture.textContent='[ CAPTURE ]';stepText.textContent=steps[0][2];return}
+ const [key,side]=steps[step],val=liveHands[side];
+ if(val==null){stepText.textContent='HAND NOT VISIBLE: '+steps[step][2];return}
+ if((key==='pitchHigh'&&cal.pitchLow-val<.12)||(key==='volumeHigh'&&cal.volumeLow-val<.12)){stepText.textContent='MOVE HAND HIGHER / RETRY';return}
+ cal[key]=val;step++;showCal();
+ if(step===4){step=-1;smoothedPitch=null;smoothedVolume=null;capture.textContent='[ RECALIBRATE ]';stepText.textContent='CALIBRATED / SAVED';try{localStorage.setItem(calKey,JSON.stringify(cal))}catch(_){}}
+ else stepText.textContent=steps[step][2]
+});
+reset.addEventListener('click',()=>{cal={...defaults};step=-1;smoothedPitch=null;smoothedVolume=null;capture.textContent='[ START CALIBRATION ]';stepText.textContent='DEFAULT RANGE';try{localStorage.removeItem(calKey)}catch(_){}showCal()});
+showCal();
+let lastPose='WAITING',poseCandidate='WAITING',poseFrames=0;
+const readHand=document.getElementById('handPoseRead'),readFace=document.getElementById('facePoseRead'),readAction=document.getElementById('gestureAction');
+const pd=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
+function classifyHand(hand){
+ if(!hand?.length)return 'WAITING';
+ const width=Math.max(.02,pd(hand[5],hand[17])),pinch=pd(hand[4],hand[8])/width;
+ const up=[[8,6],[12,10],[16,14],[20,18]].filter(([t,p])=>pd(hand[t],hand[0])>pd(hand[p],hand[0])*1.12).length;
+ if(pinch<.38)return 'PINCH';if(up<=1)return 'FIST';
+ if(up>=3){const spread=(pd(hand[8],hand[12])+pd(hand[12],hand[16])+pd(hand[16],hand[20]))/(3*width);
+ if(spread<.36)return 'FINGERS TOGETHER';if(spread>.68)return 'FINGERS SPREAD';}
+ return 'OPEN PALM';
+}
+function classifyFace(face){
+ if(!face?.length)return {primary:'WAITING',secondary:''};
+ const l=face[33],r=face[263],nose=face[1]||face[4],width=Math.max(.06,pd(l,r));
+ const dx=(nose.x-(l.x+r.x)/2)/width,tilt=Math.atan2(r.y-l.y,r.x-l.x),open=pd(face[13],face[14])/width>.105;
+ return {primary:dx<-.095?'FACE LEFT':dx>.095?'FACE RIGHT':Math.abs(tilt)>.17?'HEAD TILT':open?'MOUTH OPEN':'FACE CENTER',secondary:open?'MOUTH OPEN':Math.abs(tilt)>.17?'HEAD TILT':''};
+}
+function updateReadout(hand,face,pose){
+ const hp=hand?pose:'WAITING',fp=classifyFace(face);
+ readHand.textContent=hp;readFace.textContent=fp.primary+(fp.secondary&&fp.secondary!==fp.primary?' + '+fp.secondary:'');
+ const present=new Set([hp,fp.primary,fp.secondary]);
+ document.querySelectorAll('.gestureCard').forEach(card=>card.classList.toggle('active',present.has(card.dataset.pose)));
+ readAction.textContent=hp==='PINCH'?'NOTE ON':hp==='FIST'?'HAND QUIET':hp==='FINGERS SPREAD'?'WIDE WAVES':hp==='FINGERS TOGETHER'?'FINE WAVES':fp.secondary==='MOUTH OPEN'?'FACE REVERB':fp.primary==='FACE LEFT'?'PAN LEFT':fp.primary==='FACE RIGHT'?'PAN RIGHT':hand||face?'SCULPT ASCII':'CAMERA OFF';
+}
+
+function message(m){status.textContent=m}
+function toggleLabel(el,on,name){el.textContent=(on?'[X] ':'[ ] ')+name;el.setAttribute('aria-pressed',String(on))}
+function updateButtons(){
+ toggleLabel(handButton,handEnabled,'THEREMIN HANDS');toggleLabel(faceButton,faceMusicEnabled,'FACE EXPRESSION');toggleLabel(waveButton,wavesEnabled,'FACE WAVES');
+ button.textContent=running?'[X] STOP FRONT CAMERA':'[ ] ENABLE FRONT CAMERA';button.setAttribute('aria-pressed',String(running));
+}
+function stop(){
+ generation++;running=false;cancelAnimationFrame(frameHandle);
+ if(stream){stream.getTracks().forEach(track=>track.stop());stream=null}
+ video.pause();video.srcObject=null;
+ window.__faceWave={active:false,visible:false,x:.5,y:.5,tilt:0,mouth:0,speed:0,t:0};
+ window.__airMusicStop?.();
+ for(const tracker of [faceTracker,handTracker])if(tracker)try{tracker.close()}catch(_){}
+ faceTracker=null;handTracker=null;prevFace=null;prevHand=null;handPinched=false;liveHands={right:null,left:null};smoothedPitch=null;smoothedVolume=null;lastFrame=0;lastVideoTime=-1;
+ updateButtons();pos.textContent='HAND: WAITING / FACE: WAITING';lastPose='WAITING';poseCandidate='WAITING';poseFrames=0;updateReadout(null,null,'WAITING');message('CAMERA: OFF / VIDEO TRACKS STOPPED');
+}
+async function start(){
+ if(!navigator.mediaDevices?.getUserMedia){message('CAMERA UNAVAILABLE / HTTPS REQUIRED');return}
+ running=true;const token=++generation;updateButtons();message('CAMERA: REQUESTING PERMISSION...');
+ try{
+  // Request only camera images, no microphone. No video frames are uploaded by app code.
+  stream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:'user',width:{ideal:320},height:{ideal:240},frameRate:{ideal:15,max:24}}});
+  if(!running||token!==generation){stream.getTracks().forEach(t=>t.stop());return}
+  video.srcObject=stream;await video.play();message('LOADING HAND + FACE LANDMARKS...');
+  // Load a pinned package entrypoint, not the fragile old version's .mjs path.
+  // If one CDN fails, try a second. Match WASM files to the imported SDK version.
+  const sources=[
+   {url:'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14',wasm:'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm'},
+   {url:'https://esm.sh/@mediapipe/tasks-vision@0.10.14',wasm:'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm'},
+   {url:'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.2.3/vision_bundle.mjs',wasm:'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.2.3/wasm'}
+  ];
+  let visionSDK=null,visionFiles=null,loadedFrom='';
+  for(let i=0;i<sources.length;i++){
+   if(!running||token!==generation)return;
+   const src=sources[i];message('CAMERA: LOADING VISION LIBRARY '+(i+1)+'/'+sources.length);
+   try{
+    const mod=await import(src.url);
+    const sdk=mod.FilesetResolver?mod:(mod.default?.FilesetResolver?mod.default:null);
+    if(!sdk?.FaceLandmarker||!sdk?.HandLandmarker||!sdk?.FilesetResolver)throw Error('Face / hand exports unavailable');
+    const files=await sdk.FilesetResolver.forVisionTasks(src.wasm);
+    visionSDK=sdk;visionFiles=files;loadedFrom=src.url;break;
+   }catch(loadError){message('VISION CDN '+(i+1)+' FAILED / TRYING ALTERNATE');}
+  }
+  if(!visionSDK)throw Error('FACE LIBRARY DOWNLOAD FAILED: check Safari network / content blockers');
+  if(!running||token!==generation)return;
+  message('CAMERA: LOADING FACE MODEL...');
+  faceTracker=await visionSDK.FaceLandmarker.createFromOptions(visionFiles,{baseOptions:{modelAssetPath:'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task',delegate:'CPU'},runningMode:'VIDEO',numFaces:1,minFaceDetectionConfidence:.5,minFacePresenceConfidence:.5,minTrackingConfidence:.5});
+  if(!running||token!==generation){faceTracker.close();faceTracker=null;return}
+  message('CAMERA: LOADING HAND MODEL...');
+  try{
+   handTracker=await visionSDK.HandLandmarker.createFromOptions(visionFiles,{baseOptions:{modelAssetPath:'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task',delegate:'CPU'},runningMode:'VIDEO',numHands:2,minHandDetectionConfidence:.5,minHandPresenceConfidence:.5,minTrackingConfidence:.5});
+  }catch(handError){handTracker=null;message('FACE READY / HAND MODEL UNAVAILABLE');}
+  if(!running||token!==generation){if(handTracker)handTracker.close();handTracker=null;return}
+  message('CAMERA: READY / MOVE HAND AND FACE');frameHandle=requestAnimationFrame(loop);
+ }catch(err){const reason=err?.name==='NotAllowedError'?'PERMISSION DENIED':String(err?.message||err).slice(0,95);stop();message('CAMERA ERROR: '+reason)}
+}
+function loop(now){
+ if(!running||!faceTracker)return;
+ frameHandle=requestAnimationFrame(loop);
+ if(now-lastFrame<135||video.readyState<2||video.currentTime===lastVideoTime)return;
+ lastFrame=now;lastVideoTime=video.currentTime;
+ try{
+  const face=faceTracker.detectForVideo(video,now).faceLandmarks?.[0];
+  const hand=null; // two-hand tracking happens below
+  let pose='WAITING';
+  if(face?.length){
+   const nose=face[1]||face[4],left=face[33],right=face[263],upper=face[13],lower=face[14];
+   const x=1-nose.x,y=nose.y,tilt=Math.atan2(right.y-left.y,right.x-left.x);
+   const fw=Math.max(.06,Math.hypot(right.x-left.x,right.y-left.y));
+   const mouth=Math.min(1,Math.hypot(upper.x-lower.x,upper.y-lower.y)/fw*2.3);
+   const speed=prevFace?Math.min(1,Math.hypot(x-prevFace.x,y-prevFace.y)*8):0;
+   const prev=window.__faceWave,blend=.36;
+   window.__faceWave={active:wavesEnabled,visible:true,x:prev.visible?prev.x*(1-blend)+x*blend:x,y:prev.visible?prev.y*(1-blend)+y*blend:y,tilt,mouth,speed,t:now};
+   if(faceMusicEnabled)window.__airMusic?.face({x,y,mouth,speed,tilt});else window.__airMusic?.face(null);
+   prevFace={x,y};
+  }else{window.__faceWave.visible=false;window.__airMusic?.face(null);prevFace=null}
+  const handResult=handTracker?handTracker.detectForVideo(video,now):null;
+   const allHands=handResult?.landmarks||[];
+   const findHand=label=>{const i=handResult?.handedness?.findIndex(h=>h?.[0]?.categoryName===label)??-1;return i>=0?allHands[i]:null};
+   const pitchHand=findHand('Right')||allHands[0]||null;
+   const leftHand=findHand('Left');
+   const volumeHand=(leftHand!==pitchHand?leftHand:null)||allHands.find(h=>h!==pitchHand)||null;
+   liveHands={right:pitchHand?.length?pitchHand[8].y:null,left:volumeHand?.length?volumeHand[9].y:null};
+   if(pitchHand?.length&&handEnabled){
+    const tip=pitchHand[8],knuckle=pitchHand[5],pinky=pitchHand[17],x=1-tip.x,y=tip.y;
+    const width=Math.max(.02,pd(knuckle,pinky)),depth=Math.max(.25,Math.min(1,width/.23));
+    const speed=prevHand?Math.min(1,Math.hypot(x-prevHand.x,y-prevHand.y)*9):0;
+    const rawPitch=normalize(y,cal.pitchLow,cal.pitchHigh);
+    smoothedPitch=smoothedPitch==null?rawPitch:smoothedPitch+(rawPitch-smoothedPitch)*.35;
+    const rawVolume=volumeHand?.length?normalize(volumeHand[9].y,cal.volumeLow,cal.volumeHigh):.38;
+    smoothedVolume=smoothedVolume==null?rawVolume:smoothedVolume+(rawVolume-smoothedVolume)*.3;
+    const volume=smoothedVolume;
+    window.__airMusic?.hand({x,y:1-smoothedPitch,speed,depth,volume});
+    if(prevHand){const dx=(x-prevHand.x)*innerWidth,dy=(y-prevHand.y)*innerHeight;window.__airGesture?.(x,y,dx,dy,speed)}
+    prevHand={x,y};pose='OPEN PALM';
+    pos.textContent='PITCH '+Math.round(110*Math.pow(2,smoothedPitch*4))+' HZ / VOLUME '+Math.round(volume*100)+'% / FACE '+(face?'ON':'WAIT');
+   }else{window.__airMusic?.hand(null);prevHand=null;smoothedPitch=null;smoothedVolume=null;pose='WAITING';pos.textContent='PITCH HAND: WAITING / FACE: '+(face?'ON':'WAIT')}
+   updateReadout(handEnabled?pitchHand:null,face,pose);
+  message('CAMERA: ON / LOCAL '+(handTracker?'FACE + HAND':'FACE ONLY')+' ANALYSIS');
+ }catch(err){stop();message('TRACKING ERROR: '+String(err?.message||err).slice(0,90))}
+}
+handButton.addEventListener('click',()=>{handEnabled=!handEnabled;if(!handEnabled)window.__airMusic?.hand(null);updateButtons()});
+faceButton.addEventListener('click',()=>{faceMusicEnabled=!faceMusicEnabled;if(!faceMusicEnabled)window.__airMusic?.face(null);updateButtons()});
+waveButton.addEventListener('click',()=>{wavesEnabled=!wavesEnabled;window.__faceWave.active=wavesEnabled;updateButtons()});
+button.addEventListener('click',()=>{if(running)stop();else{window.__airUnlock?.();start()}});
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&running)stop()});
+window.addEventListener('pagehide',stop);
+updateButtons();updateReadout(null,null,'WAITING');
+</script></body></html>
