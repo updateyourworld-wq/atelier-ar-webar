@@ -772,7 +772,7 @@ function loopPlayBuffer(){
  loopSetStatus('PLAYING / '+loopBuffer.duration.toFixed(1)+'s');loopRefresh();
 }
 function loopDisposeCapture(){
- if(loopCapture){loopCapture.onaudioprocess=null;try{loopCapture.disconnect()}catch(_){}loopCapture=null}
+ if(loopCapture){loopCapture.onaudioprocess=null;try{bus?.disconnect(loopCapture)}catch(_){}try{loopCapture.disconnect()}catch(_){}loopCapture=null}
  if(loopSilent){try{loopSilent.disconnect()}catch(_){}loopSilent=null}
 }
 function loopFinish(){
